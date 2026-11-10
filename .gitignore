@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+coverage/
+*.tsbuildinfo
+
+# Environment & secrets (never commit)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Speech models and OCR data are downloaded at runtime / build time, never committed
+models/
+*.traineddata
+*.traineddata.gz
+*.tar.gz
+*.zip
+resources/tessdata/
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+.vitest-cache/
+
+# Build artifacts
+*.exe
+*.blockmap
+*.7z
+*.msi
+.beekeeper-tmp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json

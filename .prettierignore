@@ -1,0 +1,12 @@
+node_modules
+out
+dist
+release
+coverage
+playwright-report
+test-results
+package-lock.json
+docs/screenshots
+assets
+resources
+*.tsbuildinfo

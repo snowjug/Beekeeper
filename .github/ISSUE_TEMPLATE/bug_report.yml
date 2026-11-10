@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in Beekeeper is not working as expected
+title: 'bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make Beekeeper better. Please do not paste API keys or personal data.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Press Ctrl+Shift+Space
+        2. Say or type "..."
+        3. See the problem
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Beekeeper version
+      description: Settings > About
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2 (22631)
+  - type: dropdown
+    id: build
+    attributes:
+      label: Install type
+      options:
+        - Installer (NSIS)
+        - Portable
+        - Built from source
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Settings > Privacy > Open logs folder. Paste relevant lines only; keys are redacted automatically.
+      render: text
