@@ -41,6 +41,11 @@ export class EndpointDetector {
     return this.speaking || this.speechMs > 0;
   }
 
+  /** Milliseconds of speech heard so far. */
+  get speechDurationMs(): number {
+    return this.speechMs;
+  }
+
   get threshold(): number {
     return Math.max(MIN_THRESHOLD, this.floor * FLOOR_MARGIN);
   }

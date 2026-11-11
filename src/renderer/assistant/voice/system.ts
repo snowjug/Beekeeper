@@ -1,6 +1,13 @@
 import type { MutableRefObject } from 'react';
 import type { Bridge } from '@shared/ipc/bridge';
-import type { AssistantShowEvent, SpeechTokenResult, VoiceModelState } from '@shared/ipc/types';
+import type {
+  AssistantShowEvent,
+  SpeechState,
+  SpeechTokenResult,
+  VoiceModelState,
+} from '@shared/ipc/types';
+import { SPEECH_PACK_IDS, whisperPackFor } from '@shared/speech/packs';
+import { resolveEngines, type EngineAvailability } from '@shared/voiceEngines';
 import {
   EndpointDetector,
   type EndpointOptions,
@@ -12,6 +19,7 @@ import {
   RecognitionSession,
   type RecognitionHandlers,
 } from '@renderer/lib/voice/recognizer';
+import { WhisperRecognitionSession } from '@renderer/lib/voice/whisperSession';
 import { smoothTowards } from '@renderer/motion/math';
 import type { EarconKind, VoiceHooks } from '../controller';
 import { useAssistantStore } from '../store';
@@ -23,6 +31,7 @@ import {
   type SpeechSdk,
 } from './azure';
 import { Earcons } from './earcons';
+import { NaturalSpeaker } from './natural';
 import { Speaker } from './tts';
 
 export interface VoiceSystem {
@@ -43,6 +52,8 @@ const PTT_SILENCE_MS = 2600;
 interface ListeningSession {
   mic: MicSession;
   recognition: Recognition | null;
+  /** Which engine hears this utterance: Whisper only returns text once the utterance is over. */
+  engine: 'whisper' | 'offline' | 'azure';
   detector: EndpointDetector;
   frame: number;
   lastFrame: number;
@@ -67,10 +78,48 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
   const earcons = new Earcons();
   const speaker = new Speaker();
   const azureSpeaker = new AzureSpeaker();
+  const naturalSpeaker = new NaturalSpeaker(bridge);
   const models = new ModelHost();
   let active: ListeningSession | null = null;
   let starting = false;
   let progressOff: (() => void) | null = null;
+
+  // What the on-device speech engine has installed (downloaded packs); kept fresh by main.
+  let speechState: SpeechState | null = null;
+  const speechStateReady: Promise<void> = bridge
+    .invoke('speech:status')
+    .then((state) => {
+      speechState = state;
+    })
+    .catch(() => undefined);
+  const offSpeechState = bridge.on('speech:state', (state) => {
+    speechState = state;
+  });
+
+  const availability = (voskReady: boolean, azureReady: boolean): EngineAvailability => {
+    const settings = store.getState().settings;
+    const state = speechState;
+    return {
+      packs: state ? SPEECH_PACK_IDS.filter((id) => state.packs[id].state === 'ready') : [],
+      voskReady,
+      azureSpeechConfigured: azureReady,
+      elevenLabsConfigured:
+        Boolean(settings?.secrets.elevenLabsKey) && Boolean(settings?.voice.elevenLabsVoiceId),
+    };
+  };
+
+  /** Loads the models in the background so the first sentence does not wait for them. */
+  const warmUp = (): void => {
+    const settings = store.getState().settings;
+    if (!settings || !speechState) return;
+    const engines = resolveEngines(settings.voice, availability(false, false));
+    const stt = engines.stt === 'whisper';
+    const tts = settings.voice.ttsEnabled && engines.tts === 'natural';
+    if (stt || tts) void bridge.invoke('speech:preload', { stt, tts }).catch(() => undefined);
+  };
+  const offShow = bridge.on('assistant:show', () => {
+    void speechStateReady.then(warmUp);
+  });
 
   /** SDK + a short-lived token; null (never throws) when Azure Speech cannot be used right now. */
   const prepareAzure = async (): Promise<{ sdk: SpeechSdk; token: SpeechTokenResult } | null> => {
@@ -137,6 +186,55 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
     showDownloadNotice(state);
   };
 
+  const whisperPack = () =>
+    whisperPackFor(store.getState().settings?.voice.whisperModel ?? 'small');
+
+  const showSpeechDownloadNotice = (state: SpeechState | null): void => {
+    const entry = state?.packs[whisperPack()];
+    const downloading = entry?.state === 'downloading' || entry?.state === 'verifying';
+    const percent =
+      entry && entry.totalBytes > 0
+        ? Math.round((entry.receivedBytes / entry.totalBytes) * 100)
+        : 0;
+    const failed = entry?.state === 'error';
+    store.getState().setNotice({
+      text: downloading
+        ? `Downloading the voice recognition model... ${percent}%`
+        : failed
+          ? `The voice model download failed. ${entry?.message ?? ''}`.trim()
+          : 'Voice recognition needs a one-time download (about 375 MB). It runs on this PC and understands Indian English and Hindi. A smaller offline model is available in Settings > Voice.',
+      tone: failed ? 'error' : 'info',
+      ...(downloading
+        ? {}
+        : {
+            actionLabel: failed ? 'Retry' : 'Download',
+            onAction: () => void startSpeechDownload(),
+          }),
+    });
+  };
+
+  const startSpeechDownload = async (): Promise<void> => {
+    progressOff?.();
+    const pack = whisperPack();
+    progressOff = bridge.on('speech:state', (state) => {
+      showSpeechDownloadNotice(state);
+      if (state.packs[pack].state === 'ready') {
+        progressOff?.();
+        progressOff = null;
+        store.getState().setNotice(null);
+        void startListening('api');
+      }
+    });
+    try {
+      showSpeechDownloadNotice(await bridge.invoke('speech:ensurePack', { pack }));
+    } catch {
+      store.getState().setNotice({
+        text: 'The voice model could not be downloaded right now. Try again from Settings > Voice.',
+        tone: 'error',
+      });
+    }
+  };
+
   const finish = async (submitText: boolean): Promise<void> => {
     const session = active;
     if (!session || session.ending) return;
@@ -153,7 +251,15 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
 
     let text = '';
     if (session.recognition) {
-      text = submitText ? await session.recognition.finish() : session.recognition.text;
+      if (!submitText) {
+        text = session.recognition.text;
+      } else if (session.engine !== 'whisper') {
+        text = await session.recognition.finish();
+      } else if (session.detector.hasSpeech) {
+        // Whisper decodes the finished recording: show the "thinking" orb while it does.
+        state.setOrb('thinking');
+        text = await session.recognition.finish();
+      }
       session.recognition.close();
     }
     active = null;
@@ -179,30 +285,40 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
       const state = store.getState();
       speaker.cancel();
       azureSpeaker.cancel();
+      naturalSpeaker.cancel();
       state.setNotice(null);
 
-      // Azure Speech when the user chose it and it can issue a token; otherwise the offline model.
+      // Azure Speech when the user chose it and it can issue a token; otherwise Whisper or the
+      // small offline model, whichever is installed (see resolveEngines).
       const settings = store.getState().settings;
       const wantsAzure = settings?.voice.sttEngine === 'azure' && settings.ai.useAzureSpeech;
       const azure = wantsAzure ? await prepareAzure() : null;
       let fallbackNotice: string | null = null;
       if (wantsAzure && !azure) {
-        fallbackNotice = 'Azure Speech is not reachable, so I used offline recognition.';
+        fallbackNotice = 'Azure Speech is not reachable, so I used on-device recognition.';
       }
 
-      let createRecognition: (handlers: RecognitionHandlers) => Recognition;
-      if (azure) {
-        createRecognition = (handlers) =>
-          new AzureRecognitionSession(azure.sdk, azure.token, handlers);
-      } else {
-        const status = await bridge.invoke('voice:modelStatus');
-        if (status.state !== 'ready' || !status.modelUrl) {
-          showDownloadNotice(status);
-          return;
-        }
-        const offlineUrl = status.modelUrl;
-        createRecognition = (handlers) => new RecognitionSession(models, offlineUrl, handlers);
+      await speechStateReady;
+      const status = await bridge.invoke('voice:modelStatus');
+      const engines = settings
+        ? resolveEngines(settings.voice, availability(status.state === 'ready', azure !== null))
+        : null;
+      const engine: ListeningSession['engine'] | null =
+        engines?.stt === 'azure' && azure
+          ? 'azure'
+          : engines?.stt === 'whisper'
+            ? 'whisper'
+            : status.state === 'ready' && status.modelUrl
+              ? 'offline'
+              : null;
+
+      if (engine === null) {
+        // Nothing is installed yet: offer the recommended download (or the legacy small model).
+        if (settings?.voice.sttEngine === 'offline') showDownloadNotice(status);
+        else showSpeechDownloadNotice(speechState);
+        return;
       }
+      if (engine === 'whisper') warmUp();
 
       let mic: MicSession;
       try {
@@ -217,19 +333,32 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
 
       const pushToTalk = store.getState().settings?.voice.pushToTalk ?? false;
       const detector = new EndpointDetector(endpointOptionsFor(pushToTalk));
-      const recognition = createRecognition({
+      const handlers: RecognitionHandlers = {
         onText: (text) => store.getState().setTranscript({ partial: text, final: '' }),
         onError: (message) => {
           store
             .getState()
             .setNotice({ text: `Speech recognition problem: ${message}`, tone: 'error' });
         },
-      });
+      };
+      let recognition: Recognition;
+      if (engine === 'azure' && azure) {
+        recognition = new AzureRecognitionSession(azure.sdk, azure.token, handlers);
+      } else if (engine === 'whisper') {
+        recognition = new WhisperRecognitionSession(
+          (samples) => bridge.invoke('speech:transcribe', { samples }),
+          handlers,
+          () => detector.speechDurationMs / 1000,
+        );
+      } else {
+        recognition = new RecognitionSession(models, status.modelUrl ?? '', handlers);
+      }
       mic.onSamples((samples, rate) => recognition.feed(samples, rate));
 
       const session: ListeningSession = {
         mic,
         recognition,
+        engine,
         detector,
         frame: 0,
         lastFrame: performance.now(),
@@ -302,7 +431,15 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
         });
       };
 
-      if (voice.ttsEngine !== 'azure' || !settings?.ai.useAzureSpeech) {
+      const azureReady = Boolean(settings?.ai.useAzureSpeech && settings.secrets.speechKey);
+      const engines = resolveEngines(voice, availability(false, azureReady));
+      if (engines.tts === 'natural' || engines.tts === 'elevenlabs') {
+        // Any problem with the natural voice (model missing, engine busy) falls back to Windows.
+        naturalSpeaker.speak(text, callbacks).catch(speakWithSystemVoice);
+        return;
+      }
+
+      if (engines.tts !== 'azure' || !settings?.ai.useAzureSpeech) {
         speakWithSystemVoice();
         return;
       }
@@ -326,6 +463,7 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
     stopSpeaking() {
       speaker.cancel();
       azureSpeaker.cancel();
+      naturalSpeaker.cancel();
     },
     startListening,
     stopListening(submitText) {
@@ -343,9 +481,12 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
     },
     dispose() {
       progressOff?.();
+      offSpeechState();
+      offShow();
       void finish(false);
       speaker.cancel();
       azureSpeaker.cancel();
+      void naturalSpeaker.dispose();
       models.release();
       earcons.dispose();
     },

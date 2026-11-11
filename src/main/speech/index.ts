@@ -1,50 +1,39 @@
-import { SPEECH_PACK_IDS, SPEECH_PACKS, type SpeechPackId } from '@shared/speech/packs';
-import type { SpeechPackState, SpeechState } from '@shared/ipc/types';
+import { availableParallelism } from 'node:os';
+import { join } from 'node:path';
 import type { BaseFeatureDeps } from '../features/types';
-import { registerUnimplemented } from '../features/unimplemented';
+import { resolveSpeechWorker } from './assets';
+import { SpeechEngine } from './engine';
+import { registerSpeechHandlers } from './handlers';
+import { SpeechPackManager } from './packManager';
 import type { SpeechService } from './types';
+import { createWorkerThread } from './workerClient';
 
 export type { SpeechService } from './types';
 
-function missingState(): SpeechState {
-  const packs = Object.fromEntries(
-    SPEECH_PACK_IDS.map((id): [SpeechPackId, SpeechPackState] => [
-      id,
-      {
-        id,
-        state: 'missing',
-        receivedBytes: 0,
-        totalBytes: SPEECH_PACKS[id].sizeBytes,
-        bytesPerSecond: 0,
-        etaSeconds: null,
-      },
-    ]),
-  ) as Record<SpeechPackId, SpeechPackState>;
-  return { packs, engine: 'idle', loaded: { tts: false, stt: null } };
+/** Half of the logical processors (2-4): the models never starve the rest of the desktop. */
+export function speechThreads(): number {
+  return Math.min(4, Math.max(2, Math.floor(availableParallelism() / 2)));
 }
 
-/** Placeholder until the speech engine is implemented. */
+/** Creates the on-device speech engine (natural voice + Whisper) and its IPC handlers. */
 export function createSpeech(deps: BaseFeatureDeps): SpeechService {
-  registerUnimplemented(deps.router, [
-    'speech:status',
-    'speech:ensurePack',
-    'speech:cancelPack',
-    'speech:removePack',
-    'speech:preload',
-    'speech:synthesize',
-    'speech:transcribe',
-  ]);
-  const unavailable = (): Promise<never> => Promise.reject(new Error('Speech is not available'));
-  return {
-    status: missingState,
-    ensurePack: unavailable,
-    cancelPack: missingState,
-    removePack: () => Promise.resolve(missingState()),
-    preload: () => Promise.resolve(),
-    synthesize: unavailable,
-    transcribe: unavailable,
-    testElevenLabs: () => Promise.resolve({ ok: false, message: 'Speech is not available' }),
-    onState: () => () => undefined,
-    dispose: () => Promise.resolve(),
-  };
+  const { ctx, router, netFetch } = deps;
+  const packs = new SpeechPackManager({
+    rootDir: join(ctx.paths.modelsDir, 'speech'),
+    fetch: netFetch,
+    logger: ctx.logger,
+  });
+  const workerPath = resolveSpeechWorker(ctx.paths.rendererRoot, ctx.packaged);
+  const engine = new SpeechEngine({
+    packs,
+    createWorker: () => createWorkerThread(workerPath, ctx.logger),
+    settings: () => ctx.settings.get(),
+    keys: ctx.keys,
+    fetch: netFetch,
+    logger: ctx.logger,
+    threads: speechThreads(),
+  });
+  engine.onState((state) => ctx.windows.broadcast('speech:state', state));
+  registerSpeechHandlers(router, engine);
+  return engine;
 }

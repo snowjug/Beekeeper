@@ -33,6 +33,7 @@
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.11",
     "koffi": "2.16.3",
+    "sherpa-onnx-node": "2.0.1",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

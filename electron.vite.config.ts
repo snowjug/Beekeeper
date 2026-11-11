@@ -37,7 +37,13 @@ export default defineConfig({
   main: {
     resolve: { alias },
     build: {
-      rolldownOptions: { input: { index: resolve('src/main/index.ts') } },
+      // The speech worker thread is its own entry (see src/main/speech/worker.ts).
+      rolldownOptions: {
+        input: {
+          index: resolve('src/main/index.ts'),
+          speechWorker: resolve('src/main/speech/worker.ts'),
+        },
+      },
     },
   },
   preload: {
