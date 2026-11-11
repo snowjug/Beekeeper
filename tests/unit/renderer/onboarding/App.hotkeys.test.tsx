@@ -40,11 +40,18 @@ describe('hotkeys and wake word screen', () => {
     const fake = createFakeBridge();
     fake.handle('settings:get', () => ({
       ...settingsView(),
-      hotkeys: { assistant: 'Ctrl+Alt+Space', circle: 'Ctrl+Shift+F9' },
+      hotkeys: {
+        assistant: 'Ctrl+Alt+Space',
+        circle: 'Ctrl+Shift+F9',
+        capture: 'Alt+Shift+S',
+        dictation: 'Alt+Shift+D',
+      },
     }));
     fake.handle('hotkeys:status', () => ({
       assistant: { accelerator: 'Ctrl+Alt+Space', registered: true },
       circle: { accelerator: 'Ctrl+Shift+F9', registered: true },
+      capture: { accelerator: 'Alt+Shift+S', registered: true },
+      dictation: { accelerator: 'Alt+Shift+D', registered: true },
     }));
     await openHotkeysScreen({ fake });
     expect(await screen.findByRole('img', { name: 'Ctrl + Alt + Space' })).toBeInTheDocument();

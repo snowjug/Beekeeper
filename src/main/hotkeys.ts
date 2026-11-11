@@ -10,7 +10,14 @@ import type { HotkeyId, HotkeySetResult, HotkeyStatus } from '@shared/ipc/types'
 import type { Logger } from '@shared/logger';
 import type { SettingsStore } from './services/settingsStore';
 
-const IDS: readonly HotkeyId[] = ['assistant', 'circle'];
+const IDS: readonly HotkeyId[] = ['assistant', 'circle', 'capture', 'dictation'];
+
+const LABELS: Record<HotkeyId, string> = {
+  assistant: 'the assistant',
+  circle: 'Circle to Search',
+  capture: 'Capture Studio',
+  dictation: 'dictation',
+};
 
 export interface HotkeyManagerDeps {
   settings: SettingsStore;
@@ -52,7 +59,7 @@ export class HotkeyManager {
         ...(entry?.error ? { error: entry.error } : {}),
       };
     };
-    return { assistant: read('assistant'), circle: read('circle') };
+    return Object.fromEntries(IDS.map((id) => [id, read(id)])) as HotkeyStatus;
   }
 
   /** Re-registers everything (resume from sleep, session unlock, display changes). */
@@ -80,13 +87,14 @@ export class HotkeyManager {
     }
 
     const accelerator = formatAccelerator(parsed);
-    const other: HotkeyId = id === 'assistant' ? 'circle' : 'assistant';
-    const otherAccelerator = this.status()[other].accelerator;
-    if (otherAccelerator.toLowerCase() === accelerator.toLowerCase()) {
-      return this.conflict(
-        `${accelerator} is already used for ${other === 'circle' ? 'Circle to Search' : 'the assistant'}.`,
-        [accelerator, otherAccelerator],
-      );
+    const current = this.status();
+    const taken = IDS.map((other) => current[other].accelerator);
+    const clash = IDS.find(
+      (other) =>
+        other !== id && current[other].accelerator.toLowerCase() === accelerator.toLowerCase(),
+    );
+    if (clash) {
+      return this.conflict(`${accelerator} is already used for ${LABELS[clash]}.`, taken);
     }
 
     const previous = this.entries.get(id);
@@ -100,7 +108,7 @@ export class HotkeyManager {
     if (previous?.registered) this.apply(id, previous.accelerator);
     return this.conflict(`${accelerator} is already in use by another application.`, [
       accelerator,
-      otherAccelerator,
+      ...taken,
     ]);
   }
 

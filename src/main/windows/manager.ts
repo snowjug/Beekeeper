@@ -33,6 +33,7 @@ export class WindowManager {
   private readonly loaded = new Set<WindowRole>();
   private readonly queues = new Map<WindowRole, Pending>();
   private readonly roleByContents = new Map<number, WindowRole>();
+  private readonly extras = new Set<BrowserWindow>();
   readonly osBuild = parseWindowsBuild(release());
 
   constructor(private readonly deps: WindowManagerDeps) {}
@@ -120,8 +121,38 @@ export class WindowManager {
     if (win) win.destroy();
   }
 
+  /**
+   * Creates one more window of a role that may exist many times (pinned screenshots). It gets the
+   * hardened webPreferences and the role's preload; its events are sent with `webContents.send`.
+   */
+  createExtra(
+    role: WindowRole,
+    options: BrowserWindowConstructorOptions = {},
+    query = '',
+  ): BrowserWindow {
+    const base = this.optionsFor(role);
+    const win = new BrowserWindow({
+      ...base,
+      ...options,
+      webPreferences: base.webPreferences ?? {},
+    });
+    const contentsId = win.webContents.id;
+    this.roleByContents.set(contentsId, role);
+    this.extras.add(win);
+    win.on('closed', () => {
+      this.extras.delete(win);
+      this.roleByContents.delete(contentsId);
+    });
+    win.on('unresponsive', () => this.deps.logger.warn(`Window ${role} is unresponsive`));
+    void win.loadURL(this.urlFor(role, query)).catch((error: unknown) => {
+      this.deps.logger.error(`Failed to load an extra ${role} window`, error);
+    });
+    return win;
+  }
+
   destroyAll(): void {
     for (const role of WINDOW_ROLES) this.destroy(role);
+    for (const win of [...this.extras]) if (!win.isDestroyed()) win.destroy();
   }
 
   /** Resolves once the role's page has loaded (immediately when it already did). */
@@ -225,6 +256,63 @@ export class WindowManager {
         };
       case 'worker':
         return { ...common, width: 320, height: 240, focusable: false, skipTaskbar: true };
+      case 'studio':
+        // Sized and placed over the capture's display by the Studio controller.
+        return {
+          ...common,
+          title: 'Beekeeper Capture Studio',
+          frame: false,
+          transparent: true,
+          backgroundColor: '#00000000',
+          resizable: false,
+          movable: false,
+          minimizable: false,
+          maximizable: false,
+          fullscreenable: false,
+          skipTaskbar: true,
+          alwaysOnTop: true,
+          hasShadow: false,
+        };
+      case 'pin':
+        // One window per pinned screenshot (see createExtra); sized to the image by the controller.
+        return {
+          ...common,
+          title: 'Pinned screenshot',
+          width: 320,
+          height: 240,
+          frame: false,
+          transparent: true,
+          backgroundColor: '#00000000',
+          resizable: false,
+          minimizable: false,
+          maximizable: false,
+          fullscreenable: false,
+          skipTaskbar: true,
+          alwaysOnTop: true,
+          hasShadow: false,
+        };
+      case 'dictation':
+        // A small pill that never takes the keyboard focus away from the app being dictated into.
+        return {
+          ...common,
+          title: 'Beekeeper Dictation',
+          width: 360,
+          height: 84,
+          frame: false,
+          transparent: true,
+          backgroundColor: '#00000000',
+          resizable: false,
+          movable: false,
+          minimizable: false,
+          maximizable: false,
+          fullscreenable: false,
+          focusable: false,
+          skipTaskbar: true,
+          alwaysOnTop: true,
+          hasShadow: false,
+          // The microphone is read here while the window is not in front.
+          webPreferences: { ...common.webPreferences, backgroundThrottling: false },
+        };
     }
   }
 

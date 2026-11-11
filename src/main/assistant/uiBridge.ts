@@ -14,6 +14,9 @@ export interface UiBridgeDeps {
   /** Late-bound: the assistant service is created after the services that contain this bridge. */
   getAssistant: () => AssistantService;
   startCircle: () => void;
+  startCapture: (source: 'hotkey' | 'voice' | 'tray' | 'ui') => void;
+  openCaptureStudio: (shot: { path: string; width: number; height: number }) => void;
+  startDictation: () => void;
   logger: Logger;
 }
 
@@ -25,6 +28,15 @@ export function createUiBridge(deps: UiBridgeDeps): UiBridge {
     },
     openCircleToSearch() {
       deps.startCircle();
+    },
+    startCapture(source = 'voice') {
+      deps.startCapture(source);
+    },
+    openCaptureStudio(shot) {
+      deps.openCaptureStudio(shot);
+    },
+    startDictation() {
+      deps.startDictation();
     },
     stopSpeaking() {
       deps.windows.send('assistant', 'assistant:stopSpeaking', {});

@@ -7,6 +7,8 @@ const PATCH_SECTIONS = [
   'general',
   'voice',
   'circle',
+  'capture',
+  'dictation',
   'ai',
   'privacy',
   'updates',

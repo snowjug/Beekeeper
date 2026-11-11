@@ -14,4 +14,6 @@ export const BRAND_COLORS = {
 export const DEFAULT_HOTKEYS = {
   assistant: 'Ctrl+Shift+Space',
   circle: 'Alt+Shift+C',
+  capture: 'Alt+Shift+S',
+  dictation: 'Alt+Shift+D',
 } as const;

@@ -7,6 +7,9 @@ import { z } from 'zod';
 import type { Card } from '../cards';
 import { SettingsPatchSchema, type SettingsView } from '../settings';
 import type { WindowRole } from '../windows';
+import { dictationEventSchemas, dictationInvokeSchemas } from './areas/dictation.contract';
+import { speechEventSchemas, speechInvokeSchemas } from './areas/speech.contract';
+import { studioEventSchemas, studioInvokeSchemas } from './areas/studio.contract';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, type EventChannel, type InvokeChannel } from './channels';
 import type {
   AiTestResult,
@@ -64,15 +67,20 @@ export const SETTINGS_PAGES = [
   'voice',
   'hotkeys',
   'circle',
+  'capture',
+  'dictation',
   'ai',
   'privacy',
   'updates',
   'about',
 ] as const;
 
-const secretName = z.enum(['speech', 'openai']);
+const secretName = z.enum(['speech', 'openai', 'elevenlabs']);
 
 export const invokeSchemas = {
+  ...speechInvokeSchemas,
+  ...studioInvokeSchemas,
+  ...dictationInvokeSchemas,
   'app:info': { input: z.void(), output: out<AppInfo>() },
   'app:log': {
     input: z.object({
@@ -92,7 +100,7 @@ export const invokeSchemas = {
   'hotkeys:status': { input: z.void(), output: out<HotkeyStatus>() },
   'hotkeys:set': {
     input: z.object({
-      id: z.enum(['assistant', 'circle']),
+      id: z.enum(['assistant', 'circle', 'capture', 'dictation']),
       accelerator: z.string().min(1).max(60),
     }),
     output: out<HotkeySetResult>(),
@@ -225,6 +233,9 @@ export const invokeSchemas = {
 } satisfies { [K in InvokeChannel]: { input: z.ZodType; output: z.ZodType } };
 
 export const eventSchemas = {
+  ...speechEventSchemas,
+  ...studioEventSchemas,
+  ...dictationEventSchemas,
   'theme:changed': out<{ theme: 'light' | 'dark' }>(),
   'settings:changed': out<SettingsView>(),
   'settings:navigate': out<{ section: (typeof SETTINGS_PAGES)[number] }>(),

@@ -130,6 +130,9 @@ export function createFakeSystem(overrides: Partial<SystemApi> = {}): SystemApi 
 export interface FakeUi {
   openSettings: Mock<UiBridge['openSettings']>;
   openCircleToSearch: Mock<UiBridge['openCircleToSearch']>;
+  startCapture: Mock<UiBridge['startCapture']>;
+  openCaptureStudio: Mock<UiBridge['openCaptureStudio']>;
+  startDictation: Mock<UiBridge['startDictation']>;
   stopSpeaking: Mock<UiBridge['stopSpeaking']>;
   cancelPending: Mock<UiBridge['cancelPending']>;
   copyToClipboard: Mock<UiBridge['copyToClipboard']>;
@@ -195,6 +198,9 @@ export function createFakeServices(
     ui: {
       openSettings: vi.fn(),
       openCircleToSearch: vi.fn(),
+      startCapture: vi.fn(),
+      openCaptureStudio: vi.fn(),
+      startDictation: vi.fn(),
       stopSpeaking: vi.fn(),
       cancelPending: vi.fn(() => ({ confirmations: 0, streams: 0 })),
       copyToClipboard: vi.fn(),

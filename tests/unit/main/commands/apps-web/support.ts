@@ -87,6 +87,9 @@ export function createHarness(options: HarnessOptions = {}): Harness {
   const ui = {
     openSettings: vi.fn(),
     openCircleToSearch: vi.fn(),
+    startCapture: vi.fn(),
+    openCaptureStudio: vi.fn(),
+    startDictation: vi.fn(),
     stopSpeaking: vi.fn(),
     cancelPending: vi.fn(() => ({ confirmations: 0, streams: 0 })),
     copyToClipboard: vi.fn(),

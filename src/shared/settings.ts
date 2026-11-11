@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DEFAULT_HOTKEYS } from './constants';
 import { parseAccelerator } from './hotkeys';
+import { DEFAULT_NATURAL_VOICE, NATURAL_VOICE_IDS } from './speech/voices';
 
 const accelerator = z.string().refine((value) => parseAccelerator(value) !== null, {
   message: 'Invalid keyboard shortcut',
@@ -33,6 +34,9 @@ export const GeneralSchema = z.object({
     .default({ mode: 'auto', city: '' }),
 });
 
+export const VOICE_LANGUAGES = ['auto', 'en', 'hi'] as const;
+export type VoiceLanguage = (typeof VOICE_LANGUAGES)[number];
+
 export const VoiceSchema = z.object({
   micDeviceId: z.string().max(300).default('default'),
   ttsEnabled: z.boolean().default(true),
@@ -42,8 +46,23 @@ export const VoiceSchema = z.object({
   wakeWord: z.boolean().default(false),
   wakeWordPauseOnBatterySaver: z.boolean().default(true),
   earcons: z.boolean().default(true),
-  sttEngine: z.enum(['offline', 'azure']).default('offline'),
-  ttsEngine: z.enum(['system', 'azure']).default('system'),
+  /** whisper = on-device Whisper (accents + Hindi), offline = Vosk (small), azure = cloud. */
+  sttEngine: z.enum(['whisper', 'offline', 'azure']).default('whisper'),
+  /** natural = on-device human-like voice, system = Windows voices, elevenlabs/azure = cloud. */
+  ttsEngine: z.enum(['natural', 'system', 'elevenlabs', 'azure']).default('natural'),
+  /** Language you speak: auto detects English and Hindi (and Hinglish). */
+  language: z.enum(VOICE_LANGUAGES).default('auto'),
+  whisperModel: z.enum(['small', 'base']).default('small'),
+  naturalVoice: z.enum(NATURAL_VOICE_IDS).default(DEFAULT_NATURAL_VOICE),
+  naturalSpeed: z.number().min(0.7).max(1.4).default(1),
+  elevenLabsVoiceId: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{0,40}$/)
+    .default(''),
+  elevenLabsModel: z
+    .enum(['eleven_flash_v2_5', 'eleven_multilingual_v2'])
+    .default('eleven_flash_v2_5'),
   azureVoice: z
     .string()
     .trim()
@@ -54,10 +73,43 @@ export const VoiceSchema = z.object({
 export const HotkeysSchema = z.object({
   assistant: accelerator.default(DEFAULT_HOTKEYS.assistant),
   circle: accelerator.default(DEFAULT_HOTKEYS.circle),
+  capture: accelerator.default(DEFAULT_HOTKEYS.capture),
+  dictation: accelerator.default(DEFAULT_HOTKEYS.dictation),
 });
 
 export const CircleSchema = z.object({
   defaultAction: z.enum(['show', 'copy', 'search', 'translate']).default('show'),
+});
+
+/** Capture Studio: the preview that opens after a screenshot (frame, toolbar, pin, share). */
+export const CaptureSchema = z.object({
+  /** Open the Studio preview after a capture (otherwise the capture is saved with a toast). */
+  openStudio: z.boolean().default(true),
+  /** Animated gradient frame and corner brackets around the preview. */
+  glowFrame: z.boolean().default(true),
+  /** Save every capture to the screenshots folder right away. */
+  autoSave: z.boolean().default(true),
+  /** Copy every capture to the clipboard right away. */
+  autoCopy: z.boolean().default(false),
+  /** Absolute folder for saved captures; empty = Pictures\Beekeeper. */
+  saveFolder: z.string().trim().max(260).default(''),
+  /** Close the preview after this many seconds without interaction; 0 = stay open. */
+  dismissAfterSeconds: z.number().int().min(0).max(60).default(0),
+  /** Play the shutter sound when the earcons setting is on. */
+  shutterSound: z.boolean().default(true),
+});
+
+/** Dictation anywhere: speak, and Beekeeper types the text into the app you are using. */
+export const DictationSchema = z.object({
+  enabled: z.boolean().default(true),
+  /** inherit = same as voice.language. */
+  language: z.enum(['inherit', 'auto', 'en', 'hi']).default('inherit'),
+  /** type = synthetic keystrokes (works everywhere), paste = clipboard paste (faster for long text). */
+  method: z.enum(['type', 'paste']).default('type'),
+  /** Seconds of silence that end dictation automatically. */
+  silenceSeconds: z.number().min(0.8).max(8).default(2),
+  /** Turn spoken "comma", "full stop", "new line" (and Hindi equivalents) into punctuation. */
+  spokenPunctuation: z.boolean().default(true),
 });
 
 export const AiSchema = z.object({
@@ -98,6 +150,8 @@ export const SettingsSchema = z.object({
   voice: VoiceSchema.prefault({}),
   hotkeys: HotkeysSchema.prefault({}),
   circle: CircleSchema.prefault({}),
+  capture: CaptureSchema.prefault({}),
+  dictation: DictationSchema.prefault({}),
   ai: AiSchema.prefault({}),
   privacy: PrivacySchema.prefault({}),
   updates: UpdatesSchema.prefault({}),
@@ -112,6 +166,8 @@ export const SETTINGS_SECTIONS = [
   'voice',
   'hotkeys',
   'circle',
+  'capture',
+  'dictation',
   'ai',
   'privacy',
   'updates',
@@ -140,6 +196,8 @@ export const SettingsPatchSchema = z
     general: patchOf(GeneralSchema).optional(),
     voice: patchOf(VoiceSchema).optional(),
     circle: patchOf(CircleSchema).optional(),
+    capture: patchOf(CaptureSchema).optional(),
+    dictation: patchOf(DictationSchema).optional(),
     ai: patchOf(AiSchema).optional(),
     privacy: patchOf(PrivacySchema).optional(),
     updates: patchOf(UpdatesSchema).optional(),
@@ -151,6 +209,7 @@ export const SettingsPatchSchema = z
 export interface SecretsView {
   speechKey: string | null;
   openAiKey: string | null;
+  elevenLabsKey: string | null;
 }
 
 export interface SettingsView extends Settings {

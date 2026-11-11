@@ -44,7 +44,7 @@ export class SettingsStore {
   }
 
   /** Replaces one hotkey after the HotkeyManager registered it successfully. */
-  setHotkey(id: 'assistant' | 'circle', accelerator: string): Settings {
+  setHotkey(id: keyof Settings['hotkeys'], accelerator: string): Settings {
     const previous = this.store.get();
     const next: Settings = { ...previous, hotkeys: { ...previous.hotkeys, [id]: accelerator } };
     this.commit(next, previous);

@@ -1,4 +1,5 @@
 /** Windows 11 system backdrop helpers (pure parsing; the BrowserWindow calls live in manager.ts). */
+import type { WindowRole } from '@shared/windows';
 
 /** "10.0.26100" -> 26100. Returns 0 when unknown (non-Windows or unparsable). */
 export function parseWindowsBuild(release: string): number {
@@ -20,10 +21,7 @@ export type BackdropMaterial = 'mica' | 'acrylic' | 'none';
  * assistant bar is a transparent, 28px-rounded pill that animates its own shape, which a system
  * backdrop cannot follow, so it always uses the CSS glass fallback.
  */
-export function backdropFor(
-  role: 'assistant' | 'circle' | 'edgeGlow' | 'settings' | 'onboarding' | 'worker',
-  build: number,
-): BackdropMaterial {
+export function backdropFor(role: WindowRole, build: number): BackdropMaterial {
   if (!supportsBackdrop(build)) return 'none';
   return role === 'settings' || role === 'onboarding' ? 'mica' : 'none';
 }

@@ -2,7 +2,7 @@ import { maskSecret } from '@shared/redact';
 import { silentLogger, type Logger } from '@shared/logger';
 import { JsonStore } from './jsonStore';
 
-export type SecretName = 'speech' | 'openai';
+export type SecretName = 'speech' | 'openai' | 'elevenlabs';
 
 interface SecretsFile {
   version: 1;
@@ -30,7 +30,7 @@ function parseSecretsFile(raw: unknown): SecretsFile {
   const entries = (raw as { entries?: unknown }).entries;
   if (typeof entries !== 'object' || entries === null) throw new Error('invalid secrets file');
   const clean: SecretsFile['entries'] = {};
-  for (const name of ['speech', 'openai'] as const) {
+  for (const name of ['speech', 'openai', 'elevenlabs'] as const) {
     const value = (entries as Record<string, unknown>)[name];
     if (typeof value === 'string' && value.length > 0) clean[name] = value;
   }

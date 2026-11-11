@@ -105,6 +105,9 @@ export class FakeUi implements UiBridge {
 
   openSettings(): void {}
   openCircleToSearch(): void {}
+  startCapture(): void {}
+  openCaptureStudio(): void {}
+  startDictation(): void {}
   stopSpeaking(): void {}
   cancelPending(): { confirmations: number; streams: number } {
     return { confirmations: 0, streams: 0 };

@@ -2,6 +2,31 @@
 import type { Card, CountdownCard, HistoryEntry } from '../cards';
 import type { WindowRole } from '../windows';
 
+export type {
+  DictationPhase,
+  DictationStart,
+  DictationStatus,
+  DictationSubmitResult,
+} from './areas/dictation.contract';
+export type {
+  SpeechPackState,
+  SpeechState,
+  SynthesizeResult,
+  TranscribeResult,
+} from './areas/speech.contract';
+export type {
+  PinAction,
+  PinInfo,
+  SensitiveRegion,
+  StudioActionResult,
+  StudioAssistResult,
+  StudioAssistTask,
+  StudioRect,
+  StudioSession,
+  StudioShareTarget,
+  StudioSource,
+} from './areas/studio.contract';
+
 export interface Rect {
   x: number;
   y: number;
@@ -29,7 +54,7 @@ export interface AppInfo {
   userDataPath: string;
 }
 
-export type HotkeyId = 'assistant' | 'circle';
+export type HotkeyId = 'assistant' | 'circle' | 'capture' | 'dictation';
 
 export interface HotkeyStatusEntry {
   accelerator: string;
@@ -79,6 +104,8 @@ export interface SubmitResult {
   turnId: string;
   cards: Card[];
   speech?: string;
+  /** Language of the reply when it is not English (the UI picks fonts and the voice from it). */
+  locale?: 'en' | 'hi';
   autoCloseMs?: number;
   pin?: boolean;
   closeNow?: boolean;

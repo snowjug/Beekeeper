@@ -39,6 +39,7 @@ import type { CommandServices } from './commands/types';
 import type { AppContext } from './context';
 import { loadDotEnvFiles, readAzureEnv } from './env';
 import { HotkeyManager } from './hotkeys';
+import { createFeatures, type Features } from './features';
 import { registerAiHandlers, registerCircleHandlers } from './ipc/circleHandlers';
 import { registerCoreHandlers } from './ipc/handlers';
 import { IpcRouter } from './ipc/router';
@@ -312,6 +313,8 @@ export function bootstrap(mainDir: string): AppContext {
     ocr.warmUp().catch((error: unknown) => logger.warn('OCR warm-up failed', error));
     void circle.toggle(source);
   };
+  // Feature modules (speech, Capture Studio, dictation) are created after the IPC router exists.
+  let features: Features | null = null;
 
   const assistantService: AssistantService = new AssistantService({
     engine: createCommandEngine({ modules: allCommands, logger }),
@@ -337,6 +340,10 @@ export function bootstrap(mainDir: string): AppContext {
       confirmations,
       getAssistant: () => assistantService,
       startCircle: () => startCircle('voice'),
+      // Late-bound: the feature modules are created once the IPC router exists.
+      startCapture: (source) => void features?.studio.capture(source),
+      openCaptureStudio: (shot) => void features?.studio.openFile(shot, 'voice'),
+      startDictation: () => features?.dictation.toggle('voice'),
       logger,
     }),
     listCommands: () => allCommands,
@@ -369,6 +376,7 @@ export function bootstrap(mainDir: string): AppContext {
     settings,
     logger,
     trigger: (id) => {
+      if (features?.onHotkey(id)) return;
       if (id === 'assistant') assistant.toggle('hotkey');
       else startCircle('hotkey');
     },
@@ -383,6 +391,8 @@ export function bootstrap(mainDir: string): AppContext {
     actions: {
       toggleAssistant: () => assistant.toggle('tray'),
       openCircle: () => startCircle('tray'),
+      captureScreen: () => void features?.studio.capture('tray'),
+      startDictation: () => features?.dictation.toggle('tray'),
       openNotes: () => assistant.show({ listen: false, source: 'tray', view: 'notes' }),
       openTimers: () => assistant.show({ listen: false, source: 'tray', view: 'timers' }),
       openSettings: () => openers.openSettings(),
@@ -455,7 +465,23 @@ export function bootstrap(mainDir: string): AppContext {
   });
   registerCoreHandlers(router, ctx);
   registerCircleHandlers(router, { service: circleService, controller: circle, windows });
-  registerAiHandlers(router, { ai, keys, settingsView, windows });
+  registerAiHandlers(router, {
+    ai,
+    keys,
+    settingsView,
+    windows,
+    testElevenLabs: () =>
+      features?.speech.testElevenLabs() ??
+      Promise.resolve({ ok: false, message: 'Speech is not ready yet.' }),
+  });
+  features = createFeatures({
+    ctx,
+    router,
+    captures,
+    ocr,
+    netFetch,
+    captureScreen: captureWithoutOverlays,
+  });
 
   // ---- tray first (spec 7: cold start to tray ready < 2.5 s) -----------------------------------------
   tray.create();
@@ -545,6 +571,7 @@ export function bootstrap(mainDir: string): AppContext {
     wake.dispose();
     circleService.end();
     void ocr.dispose();
+    void features?.dispose();
     settings.flushSync();
     historyStore.flushSync();
     notesStore.flushSync();
@@ -555,7 +582,7 @@ export function bootstrap(mainDir: string): AppContext {
 
   // ---- hotkeys, pre-created windows, first run -------------------------------------------------------
   const status = hotkeys.registerAll();
-  if (!status.assistant.registered || !status.circle.registered) {
+  if (Object.values(status).some((entry) => !entry.registered)) {
     logger.warn(
       'Some hotkeys could not be registered; the user can pick others in Settings > Hotkeys',
     );
@@ -580,6 +607,7 @@ export function bootstrap(mainDir: string): AppContext {
       ctx,
       services,
       router,
+      features,
       circle,
       circleService,
       ocr,

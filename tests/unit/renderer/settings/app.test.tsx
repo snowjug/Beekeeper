@@ -41,7 +41,7 @@ describe('Settings window', () => {
     renderWithController(<App />, controller);
 
     expect(screen.getByRole('status', { name: 'Loading settings' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab')).toHaveLength(8);
+    expect(screen.getAllByRole('tab')).toHaveLength(10);
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
 
     open();

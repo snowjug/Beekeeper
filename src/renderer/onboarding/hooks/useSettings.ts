@@ -89,6 +89,8 @@ export function useSettings(bridge: OnboardingBridge): SettingsController {
   const hotkeys: Record<HotkeyId, string> = {
     assistant: settings?.hotkeys.assistant ?? DEFAULT_HOTKEYS.assistant,
     circle: settings?.hotkeys.circle ?? DEFAULT_HOTKEYS.circle,
+    capture: settings?.hotkeys.capture ?? DEFAULT_HOTKEYS.capture,
+    dictation: settings?.hotkeys.dictation ?? DEFAULT_HOTKEYS.dictation,
   };
 
   return { voice, hotkeys, error, setVoicePref };

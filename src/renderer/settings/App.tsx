@@ -7,7 +7,9 @@ import { useController, useSettingsStore } from './context';
 import { PANEL_ID, tabId, type SettingsPage } from './lib/nav';
 import { AboutSection } from './sections/AboutSection';
 import { AiSection } from './sections/AiSection';
+import { CaptureSection } from './sections/CaptureSection';
 import { CircleSection } from './sections/CircleSection';
+import { DictationSection } from './sections/DictationSection';
 import { GeneralSection } from './sections/GeneralSection';
 import { HotkeysSection } from './sections/HotkeysSection';
 import { PrivacySection } from './sections/PrivacySection';
@@ -22,6 +24,8 @@ const SECTION_VIEWS: Record<SettingsPage, ComponentType> = {
   voice: VoiceSection,
   hotkeys: HotkeysSection,
   circle: CircleSection,
+  capture: CaptureSection,
+  dictation: DictationSection,
   ai: AiSection,
   privacy: PrivacySection,
   updates: UpdatesSection,

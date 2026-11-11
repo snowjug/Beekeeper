@@ -1,4 +1,5 @@
 import type { AiService } from '../ai/aiService';
+import type { AiTestResult } from '@shared/ipc/types';
 import type { WindowManager } from '../windows/manager';
 import type { CircleWindowController } from '../circle/windowController';
 import type { CircleService } from '../circle/service';
@@ -52,9 +53,11 @@ export interface AiHandlerDeps {
   };
   settingsView: () => SettingsView;
   windows: WindowManager;
+  /** Connection test of the optional ElevenLabs voice (late-bound: the speech feature owns it). */
+  testElevenLabs: () => Promise<AiTestResult>;
 }
 
-/** Optional Azure features: keys (write-only from the UI), connection tests and the Speech token. */
+/** Optional cloud features: keys (write-only from the UI), connection tests and the Speech token. */
 export function registerAiHandlers(router: IpcRouter, deps: AiHandlerDeps): void {
   const refresh = (): SettingsView => {
     const view = deps.settingsView();
@@ -70,6 +73,8 @@ export function registerAiHandlers(router: IpcRouter, deps: AiHandlerDeps): void
     await deps.keys.delete(name);
     return refresh();
   });
-  router.handle('ai:test', ({ service }) => deps.ai.test(service));
+  router.handle('ai:test', ({ service }) =>
+    service === 'elevenlabs' ? deps.testElevenLabs() : deps.ai.test(service),
+  );
   router.handle('ai:speechToken', () => deps.ai.speechToken());
 }

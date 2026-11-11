@@ -35,9 +35,16 @@ const { HotkeyManager } = await import('@main/hotkeys');
 const warn = vi.fn();
 const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() };
 
-function setup(hotkeys = { assistant: 'Ctrl+Shift+Space', circle: 'Alt+Shift+C' }) {
+function setup(
+  hotkeys: Record<'assistant' | 'circle' | 'capture' | 'dictation', string> = {
+    assistant: 'Ctrl+Shift+Space',
+    circle: 'Alt+Shift+C',
+    capture: 'Alt+Shift+S',
+    dictation: 'Alt+Shift+D',
+  },
+) {
   const stored = { ...hotkeys };
-  const setHotkey = vi.fn((id: 'assistant' | 'circle', accelerator: string) => {
+  const setHotkey = vi.fn((id: keyof typeof stored, accelerator: string) => {
     stored[id] = accelerator;
   });
   const trigger = vi.fn();
@@ -65,8 +72,15 @@ describe('HotkeyManager', () => {
     expect(status).toEqual({
       assistant: { accelerator: 'Ctrl+Shift+Space', registered: true },
       circle: { accelerator: 'Alt+Shift+C', registered: true },
+      capture: { accelerator: 'Alt+Shift+S', registered: true },
+      dictation: { accelerator: 'Alt+Shift+D', registered: true },
     });
-    expect([...shortcuts.callbacks.keys()].sort()).toEqual(['Alt+Shift+C', 'Control+Shift+Space']);
+    expect([...shortcuts.callbacks.keys()].sort()).toEqual([
+      'Alt+Shift+C',
+      'Alt+Shift+D',
+      'Alt+Shift+S',
+      'Control+Shift+Space',
+    ]);
 
     shortcuts.callbacks.get('Control+Shift+Space')?.();
     shortcuts.callbacks.get('Alt+Shift+C')?.();
@@ -101,7 +115,7 @@ describe('HotkeyManager', () => {
     const status = manager.refresh();
     expect(shortcuts.unregisterAll).toHaveBeenCalled();
     expect(status.assistant.registered && status.circle.registered).toBe(true);
-    expect(shortcuts.callbacks.size).toBe(2);
+    expect(shortcuts.callbacks.size).toBe(4);
   });
 
   describe('changing a shortcut', () => {

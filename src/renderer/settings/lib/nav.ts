@@ -45,6 +45,20 @@ export const SECTIONS: readonly SectionMeta[] = [
     icon: 'circle',
   },
   {
+    id: 'capture',
+    label: 'Capture Studio',
+    title: 'Capture Studio',
+    description: 'Screenshots with a live preview, markup, pins and sharing.',
+    icon: 'screenshot',
+  },
+  {
+    id: 'dictation',
+    label: 'Dictation',
+    title: 'Dictation',
+    description: 'Speak and Beekeeper types for you in any app.',
+    icon: 'mic',
+  },
+  {
     id: 'ai',
     label: 'AI',
     title: 'AI (optional Azure)',

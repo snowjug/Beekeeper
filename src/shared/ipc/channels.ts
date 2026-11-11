@@ -4,15 +4,32 @@
  * out of their bundles. Payload schemas live in ./schemas.ts and must cover every channel here.
  */
 import type { WindowRole } from '../windows';
+import { DICTATION_EVENTS, DICTATION_INVOKE } from './areas/dictation.channels';
+import { SPEECH_EVENTS, SPEECH_INVOKE } from './areas/speech.channels';
+import { STUDIO_EVENTS, STUDIO_INVOKE } from './areas/studio.channels';
 
 type Roles = readonly WindowRole[];
 
-const ALL = ['assistant', 'circle', 'edgeGlow', 'settings', 'onboarding', 'worker'] as const;
+const ALL = [
+  'assistant',
+  'circle',
+  'edgeGlow',
+  'settings',
+  'onboarding',
+  'worker',
+  'studio',
+  'pin',
+  'dictation',
+] as const;
 const UI = ['assistant', 'circle', 'settings', 'onboarding'] as const;
 const SETTINGS_UI = ['settings', 'onboarding'] as const;
 
 /** renderer -> main (ipcRenderer.invoke / ipcMain.handle) */
 export const INVOKE_CHANNELS = {
+  ...SPEECH_INVOKE,
+  ...STUDIO_INVOKE,
+  ...DICTATION_INVOKE,
+
   // app
   'app:info': ALL,
   'app:log': ALL,
@@ -27,7 +44,7 @@ export const INVOKE_CHANNELS = {
   'hotkeys:set': SETTINGS_UI,
 
   // windows
-  'window:openSettings': ['assistant', 'circle'],
+  'window:openSettings': ['assistant', 'circle', 'studio'],
   'window:openOnboarding': ['settings'],
   'window:closeSelf': ['settings', 'onboarding', 'circle'],
 
@@ -89,6 +106,10 @@ export const INVOKE_CHANNELS = {
 
 /** main -> renderer (webContents.send / ipcRenderer.on) */
 export const EVENT_CHANNELS = {
+  ...SPEECH_EVENTS,
+  ...STUDIO_EVENTS,
+  ...DICTATION_EVENTS,
+
   'theme:changed': ALL,
   'settings:changed': ALL,
   'settings:navigate': ['settings'],

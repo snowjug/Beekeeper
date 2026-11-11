@@ -6,6 +6,9 @@ export const WINDOW_ROLES = [
   'settings',
   'onboarding',
   'worker',
+  'studio',
+  'pin',
+  'dictation',
 ] as const;
 
 export type WindowRole = (typeof WINDOW_ROLES)[number];
@@ -18,6 +21,9 @@ export const ROLE_PAGE: Record<WindowRole, string> = {
   settings: 'settings',
   onboarding: 'onboarding',
   worker: 'worker',
+  studio: 'studio',
+  pin: 'pin',
+  dictation: 'dictation',
 };
 
 export function isWindowRole(value: unknown): value is WindowRole {

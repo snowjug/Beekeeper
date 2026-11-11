@@ -161,13 +161,20 @@ describe('useSettings', () => {
     const fake = createFakeBridge();
     fake.handle('settings:get', () => ({
       ...settingsView({ voice: { wakeWord: true, micDeviceId: 'usb-1' } }),
-      hotkeys: { assistant: 'Ctrl+Alt+Space', circle: 'Alt+Shift+C' },
+      hotkeys: {
+        assistant: 'Ctrl+Alt+Space',
+        circle: 'Alt+Shift+C',
+        capture: 'Alt+Shift+S',
+        dictation: 'Alt+Shift+D',
+      },
     }));
     const { result } = renderHook(() => useSettings(fake.bridge));
     expect(result.current.voice).toEqual(DEFAULT_VOICE_PREFS);
     expect(result.current.hotkeys).toEqual({
       assistant: 'Ctrl+Shift+Space',
       circle: 'Alt+Shift+C',
+      capture: 'Alt+Shift+S',
+      dictation: 'Alt+Shift+D',
     });
     await flush();
     expect(result.current.voice).toMatchObject({ wakeWord: true, micDeviceId: 'usb-1' });

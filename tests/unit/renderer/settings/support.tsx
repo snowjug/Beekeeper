@@ -78,7 +78,7 @@ export function createFakeBridge(handlers: Handlers): FakeBridge {
 export function makeView(mutate?: (view: SettingsView) => void): SettingsView {
   const view: SettingsView = {
     ...structuredClone(DEFAULT_SETTINGS),
-    secrets: { speechKey: null, openAiKey: null },
+    secrets: { speechKey: null, openAiKey: null, elevenLabsKey: null },
   };
   mutate?.(view);
   return view;
@@ -121,6 +121,8 @@ export function makeModel(overrides: Partial<VoiceModelState> = {}): VoiceModelS
 export const HOTKEY_STATUS: HotkeyStatus = {
   assistant: { accelerator: 'Ctrl+Shift+Space', registered: true },
   circle: { accelerator: 'Alt+Shift+C', registered: true },
+  capture: { accelerator: 'Alt+Shift+S', registered: true },
+  dictation: { accelerator: 'Alt+Shift+D', registered: true },
 };
 
 /**

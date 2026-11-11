@@ -44,6 +44,8 @@ describe('Hotkeys section', () => {
           error: 'Already in use by another application',
         },
         circle: HOTKEY_STATUS.circle,
+        capture: HOTKEY_STATUS.capture,
+        dictation: HOTKEY_STATUS.dictation,
       },
     });
     renderWithController(<HotkeysSection />, h.controller);

@@ -9,6 +9,8 @@ export type TrayState = 'idle' | 'listening' | 'armed';
 export interface TrayActions {
   toggleAssistant(): void;
   openCircle(): void;
+  captureScreen(): void;
+  startDictation(): void;
   openNotes(): void;
   openTimers(): void;
   openSettings(): void;
@@ -139,6 +141,8 @@ export class TrayController {
     return Menu.buildFromTemplate([
       { label: 'Open Beekeeper', click: () => actions.toggleAssistant() },
       { label: 'Circle to Search', click: () => actions.openCircle() },
+      { label: 'Capture screen', click: () => actions.captureScreen() },
+      { label: 'Dictate (type with your voice)', click: () => actions.startDictation() },
       { type: 'separator' },
       { label: 'Notes', click: () => actions.openNotes() },
       { label: 'Timers', click: () => actions.openTimers() },

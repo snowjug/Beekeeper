@@ -62,13 +62,15 @@ export function modelState(overrides: Partial<VoiceModelState> = {}): VoiceModel
 export function settingsView(patch: SettingsPatch = {}): SettingsView {
   return {
     ...applySettingsPatch(DEFAULT_SETTINGS, patch),
-    secrets: { speechKey: null, openAiKey: null },
+    secrets: { speechKey: null, openAiKey: null, elevenLabsKey: null },
   };
 }
 
 export const HOTKEYS_OK: HotkeyStatus = {
   assistant: { accelerator: 'Ctrl+Shift+Space', registered: true },
   circle: { accelerator: 'Alt+Shift+C', registered: true },
+  capture: { accelerator: 'Alt+Shift+S', registered: true },
+  dictation: { accelerator: 'Alt+Shift+D', registered: true },
 };
 
 /** A `Bridge<'onboarding'>` with sensible answers; tests override single channels. */

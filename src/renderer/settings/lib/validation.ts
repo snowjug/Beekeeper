@@ -44,7 +44,10 @@ export const validateEndpoint: FieldCheck = (value) => {
 };
 
 /** Same limits the main process enforces for `ai:setKey` (8-400 characters after trimming). */
-export function validateApiKey(name: 'speech' | 'openai', value: string): string | null {
+export function validateApiKey(
+  name: 'speech' | 'openai' | 'elevenlabs',
+  value: string,
+): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) return 'Paste your key first.';
   if (invokeSchemas['ai:setKey'].input.safeParse({ name, value }).success) return null;

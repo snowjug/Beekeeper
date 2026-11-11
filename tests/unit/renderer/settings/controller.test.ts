@@ -49,6 +49,8 @@ describe('loading', () => {
       'hotkeys:status': () => ({
         assistant: { accelerator: 'Ctrl+Shift+Space', registered: true },
         circle: { accelerator: 'Alt+Shift+C', registered: true },
+        capture: { accelerator: 'Alt+Shift+S', registered: true },
+        dictation: { accelerator: 'Alt+Shift+D', registered: true },
       }),
       'voice:modelStatus': () => makeModel(),
       'updates:state': () => ({ status: 'idle' }),

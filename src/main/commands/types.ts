@@ -197,9 +197,25 @@ export interface ConfirmationService {
 
 export interface UiBridge {
   openSettings(
-    section?: 'general' | 'voice' | 'hotkeys' | 'circle' | 'ai' | 'privacy' | 'updates' | 'about',
+    section?:
+      | 'general'
+      | 'voice'
+      | 'hotkeys'
+      | 'circle'
+      | 'capture'
+      | 'dictation'
+      | 'ai'
+      | 'privacy'
+      | 'updates'
+      | 'about',
   ): void;
   openCircleToSearch(): void;
+  /** Captures the display under the cursor and opens it in Capture Studio. */
+  startCapture(source?: 'hotkey' | 'voice' | 'tray' | 'ui'): void;
+  /** Opens Capture Studio for a screenshot that was already saved to disk. */
+  openCaptureStudio(shot: { path: string; width: number; height: number }): void;
+  /** Starts dictation anywhere (what the dictation hotkey does). */
+  startDictation(): void;
   /** Stops TTS playback. */
   stopSpeaking(): void;
   /** Cancels pending confirmations/countdowns and any streaming answer. Returns what was cancelled. */

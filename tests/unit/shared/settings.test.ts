@@ -15,6 +15,8 @@ describe('defaults', () => {
     expect(DEFAULT_SETTINGS.hotkeys).toEqual({
       assistant: 'Ctrl+Shift+Space',
       circle: 'Alt+Shift+C',
+      capture: 'Alt+Shift+S',
+      dictation: 'Alt+Shift+D',
     });
     expect(DEFAULT_SETTINGS.general.theme).toBe('system');
     expect(DEFAULT_SETTINGS.general.language).toBe('en-US');
