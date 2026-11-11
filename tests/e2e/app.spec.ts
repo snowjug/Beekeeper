@@ -2,7 +2,11 @@ import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { expect, openAssistant, projectRoot, test } from './fixtures';
 
-const electronPath = createRequire(__filename)('electron') as unknown as string;
+// BEEKEEPER_EXE runs the suite against a packaged build instead of the Electron dev binary.
+const packagedExe = process.env['BEEKEEPER_EXE'];
+const electronBinary: unknown = createRequire(__filename)('electron');
+const electronPath = packagedExe ?? String(electronBinary);
+const launchArgs = packagedExe ? [] : [projectRoot];
 
 test.describe('application shell', () => {
   test('starts in the tray with the right icon and tooltip', async ({ launched }) => {
@@ -30,7 +34,7 @@ test.describe('application shell', () => {
     const exitCode = await new Promise<number | null>((resolve, reject) => {
       const child = execFile(
         electronPath,
-        [projectRoot],
+        launchArgs,
         {
           cwd: projectRoot,
           windowsHide: true,

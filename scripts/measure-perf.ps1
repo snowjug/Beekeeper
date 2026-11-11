@@ -1,13 +1,21 @@
 param(
   [Parameter(Mandatory = $true)][string]$Exe,
   [int]$SettleSeconds = 20,
-  [int]$SampleSeconds = 15
+  [int]$SampleSeconds = 15,
+  # Turns the wake word on (needs the offline model: -ModelDir <folder holding the model archive>).
+  [switch]$WakeWord,
+  [string]$ModelDir = ''
 )
 
 # Measures cold start to tray, idle memory and idle CPU of a built Beekeeper (all windows hidden).
 $userData = Join-Path $env:TEMP ('bk-perf-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $userData | Out-Null
-Set-Content -Path (Join-Path $userData 'settings.json') -Value '{"onboarding":{"completed":true}}'
+$settings = if ($WakeWord) { '{"onboarding":{"completed":true},"voice":{"wakeWord":true}}' } else { '{"onboarding":{"completed":true}}' }
+Set-Content -Path (Join-Path $userData 'settings.json') -Value $settings
+if ($WakeWord -and $ModelDir -ne '') {
+  New-Item -ItemType Directory -Force -Path (Join-Path $userData 'models') | Out-Null
+  Copy-Item -Path (Join-Path $ModelDir '*') -Destination (Join-Path $userData 'models') -Force
+}
 $env:BEEKEEPER_USER_DATA = $userData
 
 function Get-Family([int]$rootId) {

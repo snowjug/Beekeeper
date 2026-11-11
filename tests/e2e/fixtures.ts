@@ -106,8 +106,11 @@ export async function launchApp(options: LaunchOptions = {}): Promise<Launched> 
         `--use-file-for-fake-audio-capture=${options.fakeMic}%noloop`,
       ]
     : [];
+  // BEEKEEPER_EXE runs the suite against a packaged build (win-unpacked\Beekeeper.exe).
+  const executablePath = process.env['BEEKEEPER_EXE'];
   const app = await electron.launch({
-    args: [projectRoot, ...mediaFlags, ...(options.args ?? [])],
+    ...(executablePath ? { executablePath } : {}),
+    args: [...(executablePath ? [] : [projectRoot]), ...mediaFlags, ...(options.args ?? [])],
     cwd: projectRoot,
     env: {
       ...process.env,

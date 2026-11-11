@@ -20,7 +20,16 @@ module.exports = {
     '!assets/icons/**',
     '!assets/tray/*.png',
     '!**/*.map',
+    // koffi ships binaries for every platform; only the Windows x64 one is needed.
+    '!node_modules/koffi/build/koffi/{darwin_*,freebsd_*,linux_*,musl_*,openbsd_*,win32_arm64,win32_ia32}/**',
+    '!node_modules/koffi/{doc,src,vendor}/**',
+    // Tesseract only loads the LSTM cores, from app.asar.unpacked: drop the embedded .wasm.js
+    // builds and the legacy (non-LSTM) engine, which are about 35 MB.
+    '!node_modules/tesseract.js-core/*.wasm.js',
+    '!node_modules/tesseract.js-core/tesseract-core{,-simd,-relaxedsimd}.{js,wasm}',
   ],
+  // Beekeeper is English only for now: skip the other Chromium locale packs (about 45 MB).
+  electronLanguages: ['en-US'],
   extraResources: [
     // PowerShell helpers of the system commands (volume, brightness, apps ...).
     { from: 'resources/scripts', to: 'scripts', filter: ['*.ps1'] },
@@ -31,8 +40,10 @@ module.exports = {
       filter: ['eng.traineddata.gz'],
     },
   ],
-  // The OCR worker thread is started from real files (see src/main/capture/ocr-assets.ts).
+  // The OCR worker thread is started from real files (see src/main/capture/ocr-assets.ts) and the
+  // GDI screen grabber is a native module, which cannot be loaded from inside the asar archive.
   asarUnpack: [
+    'node_modules/koffi/build/koffi/win32_x64/**',
     'node_modules/tesseract.js/src/**',
     'node_modules/tesseract.js-core/tesseract-core*-lstm.js',
     'node_modules/tesseract.js-core/tesseract-core*-lstm.wasm',
@@ -42,6 +53,8 @@ module.exports = {
     'node_modules/wasm-feature-detect/**',
   ],
   compression: 'maximum',
+  // koffi is N-API with a prebuilt binary: there is nothing to rebuild against Electron.
+  npmRebuild: false,
   win: {
     icon: 'assets/icon.ico',
     target: [
