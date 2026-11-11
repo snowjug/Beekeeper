@@ -201,6 +201,9 @@ const TENS: Record<string, number> = {
 };
 const SCALES: Record<string, number> = { hundred: 100, thousand: 1000 };
 
+/** Own-property lookup: "constructor" and "__proto__" are words that users can say, not numbers. */
+const has = (table: Record<string, number>, word: string): boolean => Object.hasOwn(table, word);
+
 export interface NumberMatch {
   value: number;
   /** Index of the first token of the number. */
@@ -223,20 +226,20 @@ export function findNumber(tokens: readonly string[], from = 0): NumberMatch | n
     if (digits !== null) return { value: digits, start, end: start + 1 };
     if (token === 'a' || token === 'an') {
       const next = tokens[start + 1];
-      if (next !== undefined && next in SCALES) {
+      if (next !== undefined && has(SCALES, next)) {
         return { value: SCALES[next] ?? 1, start, end: start + 2 };
       }
       continue;
     }
-    if (!(token in UNITS) && !(token in TENS) && !(token in SCALES)) continue;
+    if (!has(UNITS, token) && !has(TENS, token) && !has(SCALES, token)) continue;
 
     let total = 0;
     let current = 0;
     let end = start;
     for (let index = start; index < tokens.length; index += 1) {
       const word = tokens[index] ?? '';
-      if (word in UNITS) current += UNITS[word] ?? 0;
-      else if (word in TENS) current += TENS[word] ?? 0;
+      if (has(UNITS, word)) current += UNITS[word] ?? 0;
+      else if (has(TENS, word)) current += TENS[word] ?? 0;
       else if (word === 'hundred') current = (current === 0 ? 1 : current) * 100;
       else if (word === 'thousand') {
         total += (current === 0 ? 1 : current) * 1000;
@@ -244,7 +247,7 @@ export function findNumber(tokens: readonly string[], from = 0): NumberMatch | n
       } else if (
         word === 'and' &&
         index > start &&
-        (tokens[index + 1] ?? '') in { ...UNITS, ...TENS }
+        (has(UNITS, tokens[index + 1] ?? '') || has(TENS, tokens[index + 1] ?? ''))
       ) {
         end = index + 1;
         continue;

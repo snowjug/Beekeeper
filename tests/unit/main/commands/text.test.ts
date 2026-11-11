@@ -132,6 +132,13 @@ describe('findNumber', () => {
     expect(findNumber(['a', 'timer'])).toBeNull();
     expect(findNumber(['10', 'and', '20'], 1)).toEqual({ value: 20, start: 2, end: 3 });
   });
+
+  it('does not read words that merely exist on every object as numbers', () => {
+    expect(findNumber(['set', 'volume', 'to', 'constructor'])).toBeNull();
+    expect(findNumber(['__proto__'])).toBeNull();
+    expect(findNumber(['a', 'constructor'])).toBeNull();
+    expect(findNumber(['twenty', 'and', 'constructor'])).toEqual({ value: 20, start: 0, end: 1 });
+  });
 });
 
 describe('formatting helpers', () => {
