@@ -15,12 +15,17 @@ import {
   speechWav,
   type RenderedScreen,
 } from './fixtures';
+import { describeIntruder, windowsOverApp } from './overlap';
 
 /**
  * Regenerates the README screenshots in docs/screenshots from the real, running app:
  *   $env:BEEKEEPER_DOCS = '1'; npm run build; npx playwright test tests/e2e/docs-screenshots.spec.ts
  * The desktop behind the windows is replaced by a neutral wallpaper window so that no personal
  * content ends up in the images. Needs an unlocked desktop and an internet connection (weather).
+ * The pictures are taken from the real screen, so turn on Windows "Do not disturb" first: a chat
+ * notification that pops up meanwhile would be in the image. As a second line of defence every
+ * picture is checked for windows of other programs on top of the backdrop (see overlap.ts) and
+ * retaken, or the run fails, instead of keeping one.
  */
 const OUT = process.env['BEEKEEPER_DOCS_OUT'] ?? join(projectRoot, 'docs', 'screenshots');
 
@@ -73,16 +78,54 @@ async function windowBounds(app: ElectronApplication, role: string): Promise<Rec
   }, role);
 }
 
+/** How often a picture is retaken while a notification or pop-up of another program is on top of it. */
+const MAX_RETAKES = 8;
+const RETAKE_PAUSE_MS = 2_500;
+
+/** The part of the screen a picture shows: the given rectangle, or the whole display under the cursor. */
+async function shotArea(app: ElectronApplication, rect?: Rect): Promise<Rect> {
+  if (rect) return rect;
+  return app.evaluate(
+    ({ screen }) => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds,
+  );
+}
+
+/**
+ * Takes the picture from the screen. A chat notification or any other window of another program
+ * that lands on top of the app while the picture is taken would be published with it, so the
+ * generator looks for such windows before and after the capture, waits for them to go away and
+ * retakes the picture, and fails rather than keep one (BEEKEEPER_DOCS_IGNORE_OVERLAP=1 keeps it
+ * with a warning, for a machine whose always-on-top widgets cannot be closed).
+ */
 async function shoot(app: ElectronApplication, name: string, rect?: Rect): Promise<void> {
   mkdirSync(OUT, { recursive: true });
   const file = join(OUT, `${name}.png`);
-  await app.evaluate(
-    (_electron, args) => {
-      const hooks = globalThis as unknown as Hooks;
-      return hooks.__beekeeper.captureRegion(args.file, args.rect);
-    },
-    { file, rect },
-  );
+  const area = await shotArea(app, rect);
+  for (let attempt = 1; ; attempt += 1) {
+    const before = await windowsOverApp(app, area);
+    await app.evaluate(
+      (_electron, args) => {
+        const hooks = globalThis as unknown as Hooks;
+        return hooks.__beekeeper.captureRegion(args.file, args.rect);
+      },
+      { file, rect },
+    );
+    const unwanted = [...before, ...(await windowsOverApp(app, area))];
+    if (unwanted.length === 0) break;
+    const who = [...new Set(unwanted.map(describeIntruder))].join(', ');
+    if (process.env['BEEKEEPER_DOCS_IGNORE_OVERLAP'] === '1') {
+      console.warn(`${name}: another program is on top of the picture (${who}); kept as it is`);
+      break;
+    }
+    if (attempt >= MAX_RETAKES) {
+      rmSync(file, { force: true });
+      throw new Error(
+        `${name}: another program kept a window on top of the picture (${who}). Close it, or turn on Do not disturb, and run the generator again.`,
+      );
+    }
+    console.warn(`${name}: another program is on top of the picture (${who}); trying again`);
+    await sleep(RETAKE_PAUSE_MS);
+  }
   console.log(`saved ${file}`);
 }
 
