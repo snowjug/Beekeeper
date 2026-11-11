@@ -15,6 +15,12 @@ export function speechThreads(): number {
   return Math.min(4, Math.max(2, Math.floor(availableParallelism() / 2)));
 }
 
+/** Models are released after this long without a request (tests and perf runs may shorten it). */
+function idleReleaseMs(): number | undefined {
+  const override = Number(process.env['BEEKEEPER_SPEECH_IDLE_MS']);
+  return Number.isFinite(override) && override >= 1000 ? override : undefined;
+}
+
 /** Creates the on-device speech engine (natural voice + Whisper) and its IPC handlers. */
 export function createSpeech(deps: BaseFeatureDeps): SpeechService {
   const { ctx, router, netFetch } = deps;
@@ -24,6 +30,7 @@ export function createSpeech(deps: BaseFeatureDeps): SpeechService {
     logger: ctx.logger,
   });
   const workerPath = resolveSpeechWorker(ctx.paths.rendererRoot, ctx.packaged);
+  const idleMs = idleReleaseMs();
   const engine = new SpeechEngine({
     packs,
     createWorker: () => createWorkerThread(workerPath, ctx.logger),
@@ -32,6 +39,7 @@ export function createSpeech(deps: BaseFeatureDeps): SpeechService {
     fetch: netFetch,
     logger: ctx.logger,
     threads: speechThreads(),
+    ...(idleMs === undefined ? {} : { idleMs }),
   });
   engine.onState((state) => ctx.windows.broadcast('speech:state', state));
   registerSpeechHandlers(router, engine);
