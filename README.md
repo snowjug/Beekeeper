@@ -227,13 +227,14 @@ publishes both executables plus `latest.yml` (which the in-app updater reads).
 
 Measured on the packaged build (Windows 11, 1920×1080 at 150 % scaling, Electron 45):
 
-| Budget                             | Target   | Measured                            |
-| ---------------------------------- | -------- | ----------------------------------- |
-| Cold start to tray ready           | < 2.5 s  | 0.7-0.9 s                           |
-| Hotkey to assistant bar painted    | < 150 ms | ~40 ms (median)                     |
-| Circle to Search hotkey to overlay | < 400 ms | ~90 ms (median), screen grab ~40 ms |
-| Idle memory, all windows hidden    | < 250 MB | ~190 MB working set (private)       |
-| Idle CPU, wake word off            | ~0 %     | 0-0.1 %                             |
+| Budget                             | Target   | Measured                                                                 |
+| ---------------------------------- | -------- | ------------------------------------------------------------------------ |
+| Cold start to tray ready           | < 2.5 s  | 0.5-0.6 s (3-5 s the very first time Windows scans a fresh exe)          |
+| Hotkey to assistant bar painted    | < 150 ms | ~35 ms (median)                                                          |
+| Circle to Search hotkey to overlay | < 400 ms | ~75-90 ms (median), ~200-240 ms after a long idle; the screenshot ~40 ms |
+| Idle memory, all windows hidden    | < 250 MB | ~185 MB (Task Manager "Memory", 4 processes)                             |
+| Idle CPU, wake word off            | ~0 %     | 0.05-0.1 %                                                               |
+| Idle CPU, wake word on (opt-in)    | < 3 %    | 1.6-3.2 % (about 380 MB, because the voice model stays loaded)           |
 
 The full measurement log is in [BUILD_LOG.md](BUILD_LOG.md).
 
