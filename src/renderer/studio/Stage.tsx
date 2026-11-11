@@ -18,6 +18,7 @@ export function Stage() {
   const imageSize = useStudio((state) => state.imageSize);
   const mode = useStudio((state) => state.mode);
   const redaction = useStudio((state) => state.redaction.status);
+  const sheetOpen = useStudio((state) => state.sheet.open);
   const viewport = useViewport();
   if (!session || !imageUrl || !imageSize) return null;
 
@@ -52,7 +53,13 @@ export function Stage() {
           <RedactionLayer scale={fit.scale} />
         </FrameShell>
       </div>
-      <div className="pointer-events-auto">
+      {/* The text sheet slides over this spot: the toolbar steps out of its way instead of showing through the glass. */}
+      <div
+        {...(sheetOpen ? ({ inert: '' } as Record<string, string>) : {})}
+        className={`transition-opacity duration-[var(--bk-dur-fast)] ${
+          sheetOpen ? 'pointer-events-none opacity-0' : 'pointer-events-auto'
+        }`}
+      >
         <Toolbar disabled={reviewing} />
       </div>
     </div>

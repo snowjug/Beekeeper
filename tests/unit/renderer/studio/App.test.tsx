@@ -302,6 +302,22 @@ describe('the text sheet', () => {
     expect(harness.inputsOf('studio:copyText')).toEqual([{ text: 'Hello from the picture' }]);
   });
 
+  it('takes the toolbar out of the way while it is open and brings it back when it closes', async () => {
+    const harness = await renderStudio({
+      handlers: { 'studio:assist': () => ({ ok: true, task: 'text', text: 'Hello' }) },
+    });
+    const toolbar = screen.getByRole('toolbar', { name: 'Screenshot actions' });
+    expect(toolbar.parentElement).not.toHaveAttribute('inert');
+
+    await harness.user.click(screen.getByRole('button', { name: 'Photo assist' }));
+    await harness.user.click(screen.getByRole('menuitem', { name: 'Extract text' }));
+    await screen.findByRole('dialog', { name: 'Text in this screenshot' });
+    expect(toolbar.parentElement).toHaveAttribute('inert');
+
+    await harness.user.keyboard('{Escape}');
+    await waitFor(() => expect(toolbar.parentElement).not.toHaveAttribute('inert'));
+  });
+
   it('shows a placeholder while the text is being read', async () => {
     const { gate } = await import('./support');
     const slow = gate();
