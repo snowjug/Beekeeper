@@ -8,13 +8,12 @@
   },
   "include": [
     "electron.vite.config.ts",
+    "config/**/*",
     "vitest.config.mts",
-    "playwright.config.ts",
     "src/main/**/*",
     "src/preload/**/*",
     "src/shared/**/*",
     "tests/unit/main/**/*",
-    "tests/unit/shared/**/*",
-    "tests/e2e/**/*"
+    "tests/unit/shared/**/*"
   ]
 }

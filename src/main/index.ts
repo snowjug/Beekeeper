@@ -1,27 +1,22 @@
-import { join } from 'node:path';
-import { app, BrowserWindow } from 'electron';
+import { app } from 'electron';
+import { bootstrap } from './app';
+import { configureUserData } from './paths';
+import { registerAppScheme } from './protocol';
 
-function createWindow(): void {
-  const win = new BrowserWindow({
-    width: 720,
-    height: 200,
-    show: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/assistant.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
+// Must happen before the app is ready.
+configureUserData();
+registerAppScheme();
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  let bootstrapped: ReturnType<typeof bootstrap> | null = null;
+
+  app.on('second-instance', () => {
+    bootstrapped?.assistant.show({ listen: false, source: 'second-instance' });
   });
-  win.once('ready-to-show', () => win.show());
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL'];
-  if (devUrl) {
-    void win.loadURL(`${devUrl}/assistant/index.html`);
-  } else {
-    void win.loadFile(join(__dirname, '../renderer/assistant/index.html'));
-  }
+  void app.whenReady().then(() => {
+    bootstrapped = bootstrap(__dirname);
+  });
 }
-
-void app.whenReady().then(createWindow);
-app.on('window-all-closed', () => app.quit());

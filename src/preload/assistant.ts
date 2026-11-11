@@ -1,3 +1,3 @@
-import { contextBridge } from 'electron';
+import { exposeBridge } from './_bridge';
 
-contextBridge.exposeInMainWorld('beekeeper', { role: 'assistant' as const });
+exposeBridge('assistant');

@@ -2,6 +2,7 @@
 
 *.ico binary
 *.png binary
+*.bmp binary
 *.jpg binary
 *.wav binary
 *.exe binary

@@ -18,17 +18,20 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false && tsc --noEmit -p tsconfig.e2e.json --composite false",
     "lint": "eslint . --max-warnings=0 && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "node scripts/gen-icons.mjs",
+    "dist": "npm run build && electron-builder --config electron-builder.config.cjs --win --publish never",
+    "release": "npm run build && electron-builder --config electron-builder.config.cjs --win --publish always"
   },
   "dependencies": {
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.11",
+    "koffi": "2.16.3",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
