@@ -191,6 +191,8 @@ const PHRASES: Record<string, readonly string[]> = {
     'open beekeeper settings',
   ],
   stop: ['stop', 'cancel', 'never mind', 'nevermind'],
+  briefing: ['good morning', 'brief me', 'daily briefing', 'what does my day look like'],
+  repeat: ['repeat that', 'say that again', 'what did you say'],
 };
 
 const TYPOS: Array<[string, string]> = [

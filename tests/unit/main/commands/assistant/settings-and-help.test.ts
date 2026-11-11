@@ -170,6 +170,7 @@ describe('settings and help: answers', () => {
       'Calculator',
       'Unit converter',
       'Dictionary',
+      'Daily briefing',
     ]);
     expect(result.pin).toBe(true);
     expect(result.speech).toBe("Here's what I can do.");
