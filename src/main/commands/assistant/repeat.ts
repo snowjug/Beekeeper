@@ -39,7 +39,7 @@ export const repeatCommand = defineCommand<NoSlots>({
       return {
         cards: [
           statusCard(ctx, {
-            tone: 'info',
+            tone: 'neutral',
             icon: 'info',
             title: 'Nothing to repeat yet',
             detail: 'Ask me something first.',
@@ -49,7 +49,7 @@ export const repeatCommand = defineCommand<NoSlots>({
       };
     }
     return {
-      cards: [statusCard(ctx, { tone: 'info', icon: 'volume', title: 'Saying that again' })],
+      cards: [statusCard(ctx, { tone: 'neutral', icon: 'volume', title: 'Saying that again' })],
       speech: text,
     };
   },
