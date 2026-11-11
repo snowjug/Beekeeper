@@ -21,7 +21,7 @@ Optional: copy `.env.example` to `.env` to try the Azure features without typing
 | ------------------- | ----------------------------------------------------------------------------------- |
 | `npm run dev`       | Development build with hot reload                                                   |
 | `npm run build`     | Production build into `out/`                                                        |
-| `npm run typecheck` | `tsc` for the Node (main/preload/shared/tests) and web (renderer) projects          |
+| `npm run typecheck` | `tsc` for the Node (main/preload/shared), web (renderer) and end-to-end projects    |
 | `npm run lint`      | ESLint (type-aware, `--max-warnings=0`) and `prettier --check`                      |
 | `npm run format`    | Prettier write                                                                      |
 | `npm test`          | Vitest with coverage (>= 80 % for `src/main/commands` and `src/shared`)             |
@@ -31,7 +31,12 @@ Optional: copy `.env.example` to `.env` to try the Azure features without typing
 
 End-to-end tests drive the real app. The voice tests need the offline model once:
 `node scripts/fetch-model.mjs --dir node_modules/.cache/beekeeper/models` and use Windows' own
-speech synthesizer to create the audio they "speak" into a fake microphone.
+speech synthesizer to create the audio they "speak" into a fake microphone. Run them on an
+unlocked desktop (they open real windows and take real screenshots of the screen).
+
+The README screenshots come from the running app: `$env:BEEKEEPER_DOCS = '1'; npm run build;
+npx playwright test tests/e2e/docs-screenshots.spec.ts` regenerates `docs/screenshots` on a
+neutral wallpaper window, so no personal desktop content is captured.
 
 ## Architecture in one minute
 

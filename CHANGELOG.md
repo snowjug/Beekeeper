@@ -4,7 +4,7 @@ All notable changes to Beekeeper are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - 2026-11-10
+## [1.0.0] - 2026-11-11
 
 First public release.
 
@@ -22,7 +22,8 @@ First public release.
   timers, reminders, alarms, notes, "copy that", volume, brightness, screenshot, lock, Windows
   settings pages, recycle bin, shutdown/restart/sleep (always with confirmation and a 10 s cancel
   countdown), dark mode, Circle to Search, help, and cancel.
-- **Circle to Search** (`Alt+Shift+C`): frozen, DPI-correct screenshot of the display under the
+- **Circle to Search** (`Alt+Shift+C`): frozen, DPI-correct screenshot (taken in about 40 ms through GDI)
+  of the display under the
   cursor, freehand glowing lasso that morphs into a resizable selection, tap-to-select a word,
   offline OCR (Tesseract), smart actions (links, e-mail, phone numbers, dates, math), image search,
   copy/save image and an optional "Ask about this" answer from Azure OpenAI vision.

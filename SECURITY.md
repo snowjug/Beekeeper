@@ -45,6 +45,10 @@ architecture is built around "renderers cannot do anything the main process has 
 - **Files.** The custom protocol serves only the bundled renderer, the voice model file and
   in-memory captures; path traversal is rejected. Paths received from the UI are checked against
   Beekeeper-owned folders.
+- **Native code.** The only native module is [koffi](https://koffi.dev) (MIT, prebuilt binary), which
+  calls `user32`/`gdi32` to take a screenshot in about 40 ms. It is loaded lazily in the main
+  process, never from a renderer, and Beekeeper falls back to Electron's `desktopCapturer` if it
+  cannot load.
 - **Dangerous actions need confirmation.** Shutdown, restart, sleep, empty recycle bin and force
   close always ask first; power actions add a 10 second cancel countdown.
 - **Updates** come from GitHub Releases over HTTPS through `electron-updater` (and are disabled for the
@@ -54,4 +58,7 @@ architecture is built around "renderers cannot do anything the main process has 
 ## Dependencies
 
 Dependencies are pinned through `package-lock.json`. `npm audit` is run before every release; the
-result for the current release is recorded in `BUILD_LOG.md`.
+result for the current release is recorded in `BUILD_LOG.md`. For 1.0.0 there are no high or
+critical findings. The moderate ones are `minimatch` (reached only through the ESLint toolchain,
+dev-only) and `uuid` inside `vosk-browser`, whose advisory concerns the `v3`/`v5`/`v6` functions with a
+caller-supplied buffer - the recogniser only generates random `v4` message ids.
