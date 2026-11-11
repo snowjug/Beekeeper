@@ -1466,7 +1466,8 @@ function renderPng(options: {
   return new Resvg(svg, { font: { loadSystemFonts: true } }).render().asPng();
 }
 
-describe('real OCR (tesseract.js in a worker thread)', () => {
+// The first recognition compiles the WebAssembly engine: well over the 5 s default on a CI runner.
+describe('real OCR (tesseract.js in a worker thread)', { timeout: 60_000 }, () => {
   let service: OcrService;
   let warmUpMs = 0;
 
