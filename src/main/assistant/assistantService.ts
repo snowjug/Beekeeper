@@ -3,6 +3,7 @@ import type { StreamEvent, SubmitResult } from '@shared/ipc/types';
 import type { Logger } from '@shared/logger';
 import type { Settings } from '@shared/settings';
 import { runIntent, webSearchFallback, type CommandEngine } from '../commands';
+import { localizeResult, normalizeUtterance } from '../commands/hindi';
 import type { CommandServices, CommandSettings, RunContext } from '../commands/types';
 
 /** Streams an AI answer into an AnswerCard (implemented by the Azure OpenAI service). */
@@ -77,7 +78,9 @@ export function toCommandSettings(settings: Settings, aiConfigured: boolean): Co
 
 /**
  * Runs one assistant turn: parse -> command (or AI / web fallback) -> remember the turn (short
- * multi-turn context) -> history. It is pure TypeScript with injected dependencies.
+ * multi-turn context) -> history. It is pure TypeScript with injected dependencies. Hindi and
+ * Hinglish are rewritten to the English command form for parsing and answered in Hindi; the turn
+ * and the history keep the words as they were said.
  */
 export class AssistantService {
   private turns: ConversationTurn[] = [];
@@ -119,7 +122,11 @@ export class AssistantService {
     const controller = new AbortController();
     this.abort = controller;
 
-    const intent = this.deps.engine.parse(text, { now, turns: this.turns });
+    const spoken = normalizeUtterance(text);
+    const parseContext = { now, turns: this.turns };
+    const intent =
+      this.deps.engine.parse(spoken.text, parseContext) ??
+      (spoken.changed ? this.deps.engine.parse(text, parseContext) : null);
     const context: RunContext = {
       now,
       turns: this.turns,
@@ -130,9 +137,17 @@ export class AssistantService {
       newId: this.deps.newId,
     };
 
-    const result: CommandResult = intent
+    let result: CommandResult = intent
       ? await runIntent(intent, context)
       : await this.fallback(text, context, settings);
+    if (spoken.locale === 'hi') {
+      result = localizeResult(result, {
+        commandId: intent?.command.id ?? null,
+        locale: 'hi',
+        slots: intent?.slots,
+        now,
+      });
+    }
 
     const turn: ConversationTurn = {
       id: this.deps.newId(),
@@ -161,6 +176,7 @@ export class AssistantService {
       turnId: turn.id,
       cards: result.cards,
       ...(result.speech ? { speech: result.speech } : {}),
+      locale: spoken.locale,
       ...(result.autoCloseMs !== undefined ? { autoCloseMs: result.autoCloseMs } : {}),
       ...(result.pin ? { pin: true } : {}),
       ...(result.closeNow ? { closeNow: true } : {}),
