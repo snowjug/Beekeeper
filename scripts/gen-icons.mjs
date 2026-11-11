@@ -25,16 +25,8 @@ import { Resvg } from '@resvg/resvg-js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /* ------------------------------------------------------------------------------------------ */
-/* Palette                                                                                     */
+/* Palette: the bee, its stripes and its sound waves are drawn with these colours in beeArt     */
 /* ------------------------------------------------------------------------------------------ */
-
-const COLORS = {
-  honey: { light: '#FFE08A', mid: '#FFC933', base: '#FFB300', dark: '#E58A00' },
-  coral: { light: '#FFA3A6', mid: '#FF7C80', base: '#FF5A5F', dark: '#D6384A' },
-  violet: { light: '#B99CFF', mid: '#9B72FF', base: '#7C4DFF', dark: '#5A2FD4' },
-  cyan: { light: '#7FEAF6', mid: '#2ED3E6', base: '#00BCD4', dark: '#0090A3' },
-};
-const DOT_ORDER = ['honey', 'coral', 'violet', 'cyan'];
 
 /* ------------------------------------------------------------------------------------------ */
 /* Geometry helpers                                                                            */
@@ -149,14 +141,81 @@ function latticePath(cx, cy, cellApothem, reach) {
 /* App icon (512 unit design space)                                                            */
 /* ------------------------------------------------------------------------------------------ */
 
-function orbDots(cx, cy, distance, radius, swirl = 0) {
-  const centres = [
-    [cx - swirl, cy - distance],
-    [cx + distance, cy - swirl],
-    [cx + swirl, cy + distance],
-    [cx - distance, cy + swirl],
-  ];
-  return centres.map(([x, y], i) => ({ x, y, r: radius, name: DOT_ORDER[i] }));
+/**
+ * The bee mascot in its own coordinate space: origin on the thorax, facing right, about 250 units
+ * long. `detail` trades fidelity for legibility: 'full' for 128 px and up, 'mid' for 48 / 64 px and
+ * 'min' for 20 - 32 px. Colours follow the brand palette: honey body, deep violet stripes, glassy
+ * cyan-to-violet wings and sound waves in cyan, violet and coral.
+ */
+function beeArt(idp, detail = 'full', options = {}) {
+  const full = detail === 'full';
+  const min = detail === 'min';
+  const ink = '#2A1650';
+  const head = { x: 68, y: -4 };
+  const arc = (radius, from, to) => {
+    const point = (angle) =>
+      `${n(head.x + radius * Math.cos((angle * Math.PI) / 180))} ${n(head.y + radius * Math.sin((angle * Math.PI) / 180))}`;
+    return `M${point(from)}A${radius} ${radius} 0 0 1 ${point(to)}`;
+  };
+  const waveOpacity = options.waveOpacity ?? [1, 0.92, 0.82];
+  const waves =
+    options.waves === false
+      ? ''
+      : (min ? [60, 92] : [56, 82, 108])
+          .map(
+            (radius, i) =>
+              `<path d="${arc(radius, -40, 40)}" fill="none" stroke="${['#5FE3F0', '#A98BFF', '#FF8F92'][i]}" stroke-width="${min ? 15 : 11}" stroke-linecap="round" opacity="${waveOpacity[i] ?? 1}"/>`,
+          )
+          .join('\n      ');
+
+  const wing = (cx, cy, rx, ry, angle) =>
+    `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" transform="rotate(${angle} ${cx} ${cy})" fill="url(#${idp}-bee-wing)" stroke="#fff" stroke-opacity="${full ? 0.6 : 0.5}" stroke-width="${full ? 2.4 : 3}"/>`;
+  const wings = min
+    ? wing(8, -66, 30, 60, -16)
+    : `${wing(-32, -56, 23, 54, -52)}\n      ${wing(8, -66, 29, 62, -14)}`;
+
+  const stripe = (x, width) =>
+    `<path d="M${x} -52Q${x + 10} 8 ${x} 68L${x + width} 68Q${x + width + 10} 8 ${x + width} -52Z" fill="${ink}"/>`;
+  const stripes = min
+    ? `${stripe(-96, 20)}${stripe(-60, 20)}`
+    : `${stripe(-100, 15)}${stripe(-74, 17)}${stripe(-45, 15)}`;
+
+  const antennae = min
+    ? ''
+    : `<path d="M70 -30Q78 -66 104 -74" fill="none" stroke="#FFD255" stroke-width="${full ? 5 : 6}" stroke-linecap="round"/>
+      <circle cx="106" cy="-75" r="${full ? 6.5 : 7.5}" fill="#FFD255"/>
+      <path d="M56 -31Q52 -68 68 -86" fill="none" stroke="#FFD255" stroke-width="${full ? 5 : 6}" stroke-linecap="round"/>
+      <circle cx="69" cy="-88" r="${full ? 6.5 : 7.5}" fill="#FFD255"/>`;
+
+  const defs = `
+    <linearGradient id="${idp}-bee-body" x1="0" y1="-48" x2="0" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFECAA"/>
+      <stop offset=".42" stop-color="#FFC929"/>
+      <stop offset="1" stop-color="#E88700"/>
+    </linearGradient>
+    <linearGradient id="${idp}-bee-wing" x1="-20" y1="-140" x2="12" y2="-30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A5F3FF" stop-opacity=".95"/>
+      <stop offset=".6" stop-color="#7FB5FF" stop-opacity=".74"/>
+      <stop offset="1" stop-color="#9B72FF" stop-opacity=".58"/>
+    </linearGradient>
+    <clipPath id="${idp}-bee-abd"><ellipse cx="-58" cy="8" rx="64" ry="46"/></clipPath>`;
+
+  const body = `<g>
+      ${wings}
+      <path d="M-116 4L-140 14L-116 26Z" fill="${ink}"/>
+      <ellipse cx="-58" cy="8" rx="64" ry="46" fill="url(#${idp}-bee-body)"/>
+      <g clip-path="url(#${idp}-bee-abd)">
+        ${stripes}
+        ${full ? '<ellipse cx="-62" cy="-20" rx="40" ry="9" fill="#fff" opacity=".3"/>' : ''}
+      </g>
+      <ellipse cx="14" cy="2" rx="38" ry="40" fill="url(#${idp}-bee-body)"/>
+      <circle cx="${head.x}" cy="${head.y}" r="30" fill="url(#${idp}-bee-body)"/>
+      <ellipse cx="78" cy="-10" rx="${min ? 10 : 8.5}" ry="${min ? 12 : 11}" fill="${ink}"/>
+      <circle cx="81" cy="-14.5" r="${min ? 3.6 : 3.2}" fill="#fff"/>
+      ${antennae}
+      ${waves}
+    </g>`;
+  return { defs, body };
 }
 
 /** The icon artwork in a 512 x 512 design space (used for every render of 128 px and above). */
@@ -164,18 +223,8 @@ function appIconArt(idp) {
   const c = 256;
   const outer = roundedHexPath(c, c, 204, 50);
   const inner = roundedHexPath(c, c, 182, 28);
-  const dots = orbDots(c, c, 80, 52);
-
-  const beadDefs = dots
-    .map(
-      (dot) => `<radialGradient id="${idp}-bead-${dot.name}" cx=".5" cy=".46" r=".66">
-      <stop offset="0" stop-color="${COLORS[dot.name].light}"/>
-      <stop offset=".5" stop-color="${COLORS[dot.name].base}"/>
-      <stop offset="1" stop-color="${COLORS[dot.name].dark}"/>
-    </radialGradient>`,
-    )
-    .join('\n    ');
-
+  const bee = beeArt(idp, 'full');
+  const beeTransform = 'translate(234 296) rotate(-15) scale(.98)';
   const defs = `
     <radialGradient id="${idp}-glass" cx="256" cy="212" r="280" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#352A63"/>
@@ -212,7 +261,12 @@ function appIconArt(idp) {
       <stop offset=".7" stop-color="#FFD455" stop-opacity=".1"/>
       <stop offset="1" stop-color="#FFD455" stop-opacity=".2"/>
     </radialGradient>
-    ${beadDefs}
+    <radialGradient id="${idp}-warm" cx="256" cy="262" r="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB300" stop-opacity=".34"/>
+      <stop offset=".55" stop-color="#FF8A3D" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#FF8A3D" stop-opacity="0"/>
+    </radialGradient>
+    ${bee.defs}
     <clipPath id="${idp}-clip"><path d="${outer}"/></clipPath>
     <filter id="${idp}-b8" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
     <filter id="${idp}-b12" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12"/></filter>
@@ -223,20 +277,6 @@ function appIconArt(idp) {
 
   const texture = `<path d="${latticePath(c, c, 38, 250)}" fill="none" stroke="url(#${idp}-cells)" stroke-width="1.6" stroke-linejoin="round"/>`;
 
-  const glows = dots
-    .map(
-      (dot) =>
-        `<circle cx="${n(dot.x)}" cy="${n(dot.y)}" r="${n(dot.r * 1.5)}" fill="${COLORS[dot.name].base}" opacity=".6" filter="url(#${idp}-glow)" style="mix-blend-mode:screen"/>`,
-    )
-    .join('\n      ');
-
-  const beads = dots
-    .map(
-      (dot) =>
-        `<circle cx="${n(dot.x)}" cy="${n(dot.y)}" r="${n(dot.r)}" fill="url(#${idp}-bead-${dot.name})"/>`,
-    )
-    .join('\n      ');
-
   const body = `
     ${ambient}
     <path d="${outer}" fill="url(#${idp}-glass)"/>
@@ -244,10 +284,10 @@ function appIconArt(idp) {
       ${texture}
       <circle cx="256" cy="500" r="190" fill="url(#${idp}-floor)"/>
       <circle cx="256" cy="256" r="190" fill="url(#${idp}-halo)"/>
-      <g style="isolation:isolate">
-      ${glows}
+      <circle cx="256" cy="262" r="170" fill="url(#${idp}-warm)"/>
+      <g transform="${beeTransform}">
+      ${bee.body}
       </g>
-      ${beads}
       <ellipse cx="256" cy="-30" rx="330" ry="300" fill="url(#${idp}-sheen)"/>
     </g>
     <path d="${outer} ${inner}" fill="url(#${idp}-rim)" fill-rule="evenodd"/>
@@ -327,68 +367,90 @@ function pixelsPath(pixels) {
   return d;
 }
 
-/** 3 x 3 pixel dot: a solid plus with softened corners, centred on the pixel containing (x, y). */
-function pixelDot(x, y, color) {
-  const px = Math.floor(x);
-  const py = Math.floor(y);
-  const plus = `M${px} ${py - 1}h1v3h-1zM${px - 1} ${py}h3v1h-3z`;
-  let corners = '';
-  for (const dy of [-1, 1]) {
-    for (const dx of [-1, 1]) corners += `M${px + dx} ${py + dy}h1v1h-1z`;
-  }
-  return `<path d="${plus}" fill="${color}" shape-rendering="crispEdges"/>
-    <path d="${corners}" fill="${color}" fill-opacity=".62" shape-rendering="crispEdges"/>`;
-}
-
 /* ------------------------------------------------------------------------------------------ */
 /* Compact app icon (16 - 64 px): simplified, thicker rim, designed on the pixel grid          */
 /* ------------------------------------------------------------------------------------------ */
 
+/** Where the bee (local 'min' / 'mid' space, see beeArt) sits so its bounding box is centred. */
+function beePlacement(c, k, local) {
+  const angle = (-15 * Math.PI) / 180;
+  const x = k * local.x;
+  const y = k * local.y;
+  const rotated = [
+    x * Math.cos(angle) - y * Math.sin(angle),
+    x * Math.sin(angle) + y * Math.cos(angle),
+  ];
+  return `translate(${n(c - rotated[0])} ${n(c - rotated[1])}) rotate(-15) scale(${n(k)})`;
+}
+
+/** Hand-placed 16 px bee: pixel groups per colour, facing right. `x`/`y` offset the whole bee. */
+function pixelBee({ wing, body, ink, eye }, { x = 0, y = 0, waves = [] } = {}) {
+  const rects = (cells) => cells.map(([cx, cy]) => `M${cx + x} ${cy + y}h1v1h-1z`).join('');
+  const wingCells = [
+    [5, 3],
+    [6, 3],
+    [4, 4],
+    [5, 4],
+    [6, 4],
+    [7, 4],
+  ];
+  const bodyCells = [];
+  for (const [row, from, to] of [
+    [5, 4, 9],
+    [6, 3, 11],
+    [7, 3, 11],
+    [8, 4, 10],
+  ]) {
+    for (let col = from; col <= to; col++) bodyCells.push([col, row]);
+  }
+  const stripeCells = [4, 6].flatMap((col) => [5, 6, 7, 8].map((row) => [col, row]));
+  const waveCells = waves.flatMap((height, i) => {
+    const col = 12 + i;
+    const top = 6 - Math.floor(height / 2);
+    return Array.from({ length: height }, (_, step) => [col, top + step]);
+  });
+  const wavePath = rects(waveCells);
+  return `<path d="${rects(wingCells)}" fill="${wing}" shape-rendering="crispEdges"/>
+  <path d="${rects(bodyCells)}" fill="${body}" shape-rendering="crispEdges"/>
+  <path d="${rects(stripeCells.filter(([col, row]) => bodyCells.some(([bx, by]) => bx === col && by === row)))}" fill="${ink}" shape-rendering="crispEdges"/>
+  <path d="${rects([[10, 6]])}" fill="${eye}" shape-rendering="crispEdges"/>
+  ${wavePath ? `<path d="${wavePath}" fill="${wing}" shape-rendering="crispEdges"/>` : ''}`;
+}
+
 const COMPACT_ICON = {
-  16: { pixel: true, dotD: 3.5, swirl: 0.5 },
-  24: { apothem: 10, corner: 2.2, rim: 2, dotD: 4, dotR: 2, swirl: 0 },
-  32: { apothem: 14, corner: 3, rim: 3, dotD: 6, dotR: 3, swirl: 0 },
-  48: { apothem: 20, corner: 4.5, rim: 3, dotD: 9, dotR: 5, swirl: 0 },
-  64: { apothem: 26, corner: 6, rim: 4, dotD: 12, dotR: 7, swirl: 0 },
+  16: { pixel: true },
+  24: { apothem: 10, corner: 2.2, rim: 2, detail: 'min', fill: 0.9 },
+  32: { apothem: 14, corner: 3, rim: 3, detail: 'min', fill: 0.9 },
+  48: { apothem: 20, corner: 4.5, rim: 3, detail: 'mid', fill: 0.9 },
+  64: { apothem: 26, corner: 6, rim: 4, detail: 'mid', fill: 0.92 },
+};
+
+/** Local-space bounding box centres of the bee at each detail level (wave arcs included). */
+const BEE_LOCAL = {
+  min: { x: 13.75, y: -36, width: 308 },
+  mid: { x: 16, y: -38, width: 330 },
 };
 
 function compactIconSvg(size) {
   const m = COMPACT_ICON[size];
   const c = size / 2;
-  const polished = size >= 48;
   const outer = m.pixel ? pixelsPath(hexPixels(true)) : roundedHexPath(c, c, m.apothem, m.corner);
   const rim = m.pixel
     ? pixelsPath(hexPixels())
     : `${outer} ${roundedHexPath(c, c, m.apothem - m.rim, Math.max(m.corner - m.rim, 0.5))}`;
   const crisp = m.pixel ? ' shape-rendering="crispEdges"' : '';
-  const dots = orbDots(c, c, m.dotD, m.dotR, m.swirl);
-  const beadFill = (name) => (polished ? `url(#bk-bead-${name})` : COLORS[name].base);
-  const beadDefs = polished
-    ? dots
-        .map(
-          (d) => `<linearGradient id="bk-bead-${d.name}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${COLORS[d.name].mid}"/>
-      <stop offset="1" stop-color="${COLORS[d.name].base}"/>
-    </linearGradient>`,
-        )
-        .join('\n    ')
-    : '';
-  const halo = polished
-    ? `<radialGradient id="bk-halo" cx="${c}" cy="${c}" r="${n(m.dotD + m.dotR * 1.8)}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#B9A4FF" stop-opacity=".3"/>
-      <stop offset="1" stop-color="#7C4DFF" stop-opacity="0"/>
-    </radialGradient>`
-    : '';
-  const haloShape = polished
-    ? `<circle cx="${c}" cy="${c}" r="${n(m.dotD + m.dotR * 1.8)}" fill="url(#bk-halo)"/>`
-    : '';
-  const circles = dots
-    .map((d) =>
-      m.pixel
-        ? pixelDot(d.x, d.y, COLORS[d.name].base)
-        : `<circle cx="${n(d.x)}" cy="${n(d.y)}" r="${n(d.r)}" fill="${beadFill(d.name)}"/>`,
-    )
-    .join('\n  ');
+
+  let art;
+  let artDefs = '';
+  if (m.pixel) {
+    art = pixelBee({ wing: '#7FEAF6', body: '#FFB300', ink: '#2A1650', eye: '#FFFFFF' }, { y: 2 });
+  } else {
+    const bee = beeArt('bk', m.detail);
+    const local = BEE_LOCAL[m.detail];
+    const k = (2 * (m.apothem - m.rim) * m.fill) / local.width;
+    artDefs = bee.defs;
+    art = `<g transform="${beePlacement(c, k, local)}">${bee.body}</g>`;
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="bk-fill" x1="0" y1="0" x2="0" y2="${size}" gradientUnits="userSpaceOnUse">
@@ -399,19 +461,17 @@ function compactIconSvg(size) {
       <stop offset="0" stop-color="#FFC933"/>
       <stop offset="1" stop-color="#FFA000"/>
     </linearGradient>
-    ${beadDefs}
-    ${halo}
+    ${artDefs}
   </defs>
   <path d="${outer}" fill="url(#bk-fill)"${crisp}/>
-  ${haloShape}
-  ${circles}
+  ${art}
   <path d="${rim}" fill="url(#bk-rim)"${m.pixel ? crisp : ' fill-rule="evenodd"'}/>
 </svg>
 `;
 }
 
 /* ------------------------------------------------------------------------------------------ */
-/* Tray glyphs (16 / 20 / 24 / 32 px): outline hexagon + orb, audio bars while listening       */
+/* Tray glyphs (16 / 20 / 24 / 32 px): outline hexagon + bee, sound waves while listening       */
 /* ------------------------------------------------------------------------------------------ */
 
 const TRAY_THEMES = {
@@ -426,15 +486,12 @@ const TRAY_THEMES = {
 };
 
 /**
- * Per-size metrics, all in pixels of the target canvas. Bars pulse between `outer` (first and
- * last bar) and `inner` (middle bars) heights, always in multiples of 2 so they stay centred on
- * the pixel grid. 16 px is drawn pixel by pixel; the others are vector shapes snapped to pixels.
+ * Per-size metrics, all in pixels of the target canvas. 16 px is drawn pixel by pixel; the others
+ * are vector shapes: the hexagon outline plus the bee scaled to `fill` of the free interior.
  */
 const TRAY = {
   16: {
     pixel: true,
-    dot: { d: 3.5, r: 1.5, swirl: 0.5 },
-    bars: { w: 1, pitch: 3, radius: 0, outer: [2, 6], inner: [2, 10] },
     badge: { x: 13, y: 13, r: 2, knock: 4 },
   },
   20: {
@@ -442,8 +499,7 @@ const TRAY = {
     squash: 0.95,
     corner: 1.8,
     stroke: 1,
-    dot: { d: 4, r: 2, swirl: 0 },
-    bars: { w: 2, pitch: 4, radius: 0, outer: [2, 8], inner: [2, 12] },
+    fill: 0.86,
     badge: { x: 16, y: 16, r: 2.5, knock: 3.7 },
   },
   24: {
@@ -451,25 +507,31 @@ const TRAY = {
     squash: 0.955,
     corner: 2.2,
     stroke: 1.5,
-    dot: { d: 4.5, r: 2.5, swirl: 0.5 },
-    bars: { w: 2, pitch: 4, radius: 0, outer: [2, 10], inner: [2, 14] },
+    fill: 0.86,
     badge: { x: 19, y: 19, r: 3, knock: 4.4 },
   },
   32: {
     apothem: 13,
     corner: 2.2,
     stroke: 2,
-    dot: { d: 6, r: 3, swirl: 0 },
-    bars: { w: 3, pitch: 5, radius: 1, outer: [4, 12], inner: [4, 20] },
+    fill: 0.88,
     badge: { x: 26, y: 26, r: 4, knock: 5.8 },
   },
 };
 
-/** Bar heights for one frame of the 8-frame loop: a wave travelling across the four bars. */
-function barHeights(frame, { outer, inner }) {
-  return [outer, inner, inner, outer].map(([low, high], i) => {
-    const wave = 0.5 + 0.5 * Math.sin((2 * Math.PI * frame) / 8 - (i * Math.PI) / 2);
-    return Math.round((low + (high - low) * wave) / 2) * 2;
+/** Opacity of the three sound waves in one frame of the 8-frame loop: a pulse travelling outwards. */
+function waveLevels(frame) {
+  return [0, 1, 2].map((i) => {
+    const wave = 0.5 + 0.5 * Math.sin((2 * Math.PI * frame) / 8 - (i * Math.PI) / 2.2);
+    return Math.round((0.28 + 0.72 * wave) * 100) / 100;
+  });
+}
+
+/** Heights (in pixels) of the two wave columns of the 16 px listening frames. */
+function pixelWaveHeights(frame) {
+  return [0, 1].map((i) => {
+    const wave = 0.5 + 0.5 * Math.sin((2 * Math.PI * frame) / 8 - i * 1.4);
+    return 2 + Math.round(wave * 4);
   });
 }
 
@@ -478,27 +540,29 @@ function trayGlyphSvg(px, { theme, state, frame = 0 }) {
   const t = TRAY_THEMES[theme];
   const c = px / 2;
   const armed = state === 'armed';
+  const listening = state === 'listening';
   const b = m.badge;
-  let orb;
-  if (state === 'listening') {
-    const heights = barHeights(frame, m.bars);
-    const x0 = c - (3 * m.bars.pitch + m.bars.w) / 2;
-    orb = DOT_ORDER.map((name, i) => {
-      const h = heights[i];
-      return `<rect x="${n(x0 + i * m.bars.pitch)}" y="${n(c - h / 2)}" width="${n(m.bars.w)}" height="${n(h)}" rx="${n(m.bars.radius)}" fill="${t.dots[name]}"/>`;
-    }).join('\n    ');
+
+  let art;
+  let artDefs = '';
+  if (m.pixel) {
+    art = pixelBee(
+      { wing: t.dots.cyan, body: t.dots.honey, ink: '#2A1650', eye: '#FFFFFF' },
+      { y: 2, waves: listening ? pixelWaveHeights(frame) : [] },
+    );
   } else {
-    orb = orbDots(c, c, m.dot.d, m.dot.r, m.dot.swirl)
-      .map((d) =>
-        m.pixel
-          ? pixelDot(d.x, d.y, t.dots[d.name])
-          : `<circle cx="${n(d.x)}" cy="${n(d.y)}" r="${n(d.r)}" fill="${t.dots[d.name]}"/>`,
-      )
-      .join('\n    ');
+    const bee = beeArt('bk', 'min', {
+      waves: listening,
+      waveOpacity: listening ? waveLevels(frame) : undefined,
+    });
+    const local = BEE_LOCAL.min;
+    const k = (2 * (m.apothem - m.stroke) * m.fill) / local.width;
+    artDefs = bee.defs;
+    art = `<g transform="${beePlacement(c, k, local)}">${bee.body}</g>`;
   }
 
   let outline;
-  let defs = '';
+  let defs = artDefs;
   let badge = '';
   let mask = '';
   if (m.pixel) {
@@ -511,7 +575,7 @@ function trayGlyphSvg(px, { theme, state, frame = 0 }) {
   } else {
     outline = `<path d="${roundedHexPath(c, c, m.apothem, m.corner, m.squash)}" fill="none" stroke="${t.outline}" stroke-width="${n(m.stroke)}" stroke-linejoin="round"/>`;
     if (armed) {
-      defs = `<mask id="bk-ko" maskUnits="userSpaceOnUse" x="0" y="0" width="${px}" height="${px}">
+      defs += `<mask id="bk-ko" maskUnits="userSpaceOnUse" x="0" y="0" width="${px}" height="${px}">
       <rect width="${px}" height="${px}" fill="#fff"/>
       <circle cx="${n(b.x)}" cy="${n(b.y)}" r="${n(b.knock)}" fill="#000"/>
     </mask>`;
@@ -523,7 +587,7 @@ function trayGlyphSvg(px, { theme, state, frame = 0 }) {
   <defs>${defs}</defs>
   <g${mask}>
     ${outline}
-    ${orb}
+    ${art}
   </g>
   ${badge}
 </svg>
