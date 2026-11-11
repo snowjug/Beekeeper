@@ -25,11 +25,16 @@ const cacheRoot = join(projectRoot, 'node_modules', '.cache', 'beekeeper');
 /** The offline speech model downloaded once by `node scripts/fetch-model.mjs --dir <this folder>`. */
 export const modelCacheDir = join(cacheRoot, 'models');
 
-/** Synthesises (once) a WAV of Windows' own voice saying `text`, to be used as a fake microphone. */
-export function speechWav(text: string): string {
+/**
+ * Synthesises (once) a WAV of Windows' own voice saying `text`, to be used as a fake microphone.
+ * `leadMs` is the silence before the words (700 ms by default): Chromium plays the file once from
+ * the moment the stream opens, so a longer lead keeps the first words safe on a busy machine.
+ */
+export function speechWav(text: string, leadMs?: number): string {
   const folder = join(cacheRoot, 'audio');
   mkdirSync(folder, { recursive: true });
-  const file = join(folder, `${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.wav`);
+  const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const file = join(folder, `${slug}${leadMs === undefined ? '' : `-lead${leadMs}`}.wav`);
   if (!existsSync(file)) {
     execFileSync(
       'powershell.exe',
@@ -43,6 +48,7 @@ export function speechWav(text: string): string {
         text,
         '-Out',
         file,
+        ...(leadMs === undefined ? [] : ['-LeadMs', String(leadMs)]),
       ],
       { windowsHide: true },
     );
