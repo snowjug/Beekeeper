@@ -48,6 +48,7 @@ export interface VoiceSystemDeps {
 }
 
 const PTT_SILENCE_MS = 2600;
+const UPGRADE_NOTICE_KEY = 'bk.voiceUpgrade11';
 
 interface ListeningSession {
   mic: MicSession;
@@ -117,8 +118,33 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
     const tts = settings.voice.ttsEnabled && engines.tts === 'natural';
     if (stt || tts) void bridge.invoke('speech:preload', { stt, tts }).catch(() => undefined);
   };
-  const offShow = bridge.on('assistant:show', () => {
-    void speechStateReady.then(warmUp);
+  /** One-time hint for people who upgraded from 1.0 and still use the robotic voice. */
+  const showUpgradeNotice = (): void => {
+    const settings = store.getState().settings;
+    if (
+      !settings ||
+      !(settings.voice.sttEngine === 'offline' && settings.voice.ttsEngine === 'system')
+    ) {
+      return;
+    }
+    try {
+      if (localStorage.getItem(UPGRADE_NOTICE_KEY)) return;
+      localStorage.setItem(UPGRADE_NOTICE_KEY, '1');
+    } catch {
+      return;
+    }
+    store.getState().setNotice({
+      text: 'New: a natural voice and recognition that understands Indian English and Hindi.',
+      actionLabel: 'Open Voice settings',
+      onAction: () => void bridge.invoke('window:openSettings', { section: 'voice' }),
+    });
+  };
+
+  const offShow = bridge.on('assistant:show', (event) => {
+    void speechStateReady.then(() => {
+      warmUp();
+      if (!event.listen) showUpgradeNotice();
+    });
   });
 
   /** SDK + a short-lived token; null (never throws) when Azure Speech cannot be used right now. */

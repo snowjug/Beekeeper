@@ -1,4 +1,4 @@
-import type { Bridge } from '@shared/ipc/bridge';
+import type { InvokeInput } from '@shared/ipc/schemas';
 import type { SynthesizeResult } from '@shared/ipc/types';
 import { speechChunks, type LangRun } from '@shared/speech/text';
 import { SpeechPlayer } from '@renderer/lib/voice/player';
@@ -12,7 +12,13 @@ export interface NaturalSpeakOptions {
 /** How many sentences are synthesised ahead of the one that is playing. */
 const LOOKAHEAD = 2;
 
-type SpeechBridge = Pick<Bridge<'assistant'>, 'invoke'>;
+/** The only thing the natural speaker needs from a window's bridge. */
+export interface SynthesisBridge {
+  invoke(
+    channel: 'speech:synthesize',
+    input: InvokeInput<'speech:synthesize'>,
+  ): Promise<SynthesizeResult>;
+}
 
 /**
  * Speaks a reply with the on-device natural voice (or ElevenLabs). The reply is cut into sentences
@@ -29,7 +35,7 @@ export class NaturalSpeaker {
     return this.onEnd !== null;
   }
 
-  constructor(private readonly bridge: SpeechBridge) {}
+  constructor(private readonly bridge: SynthesisBridge) {}
 
   /**
    * Resolves when the whole reply has been spoken (or was cancelled). Rejects only when the very

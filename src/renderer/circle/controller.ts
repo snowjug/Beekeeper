@@ -1,4 +1,4 @@
-import { Speaker } from '@renderer/assistant/voice/tts';
+import { AdaptiveSpeaker, type TextSpeaker } from '@renderer/assistant/voice/adaptive';
 import { showToast } from '@renderer/components/Toast';
 import type { Rect } from '@shared/geometry';
 import type { Bridge } from '@shared/ipc/bridge';
@@ -33,7 +33,7 @@ export class CircleController {
 
   constructor(
     private readonly bridge: Bridge<'circle'>,
-    private readonly speaker: Speaker = new Speaker(),
+    private readonly speaker: TextSpeaker = new AdaptiveSpeaker(bridge),
     private readonly store: Store = useCircleStore,
   ) {}
 
@@ -331,6 +331,7 @@ export class CircleController {
     if (state.ocr.text === '') return;
     const voice = state.settings?.voice;
     await this.speaker.speak(state.ocr.text, {
+      engine: voice?.ttsEngine ?? 'system',
       voiceUri: voice?.ttsVoiceUri ?? '',
       rate: voice?.ttsRate ?? 1,
       onStart: () => this.store.getState().setSpeaking(true),

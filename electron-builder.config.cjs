@@ -40,9 +40,13 @@ module.exports = {
       filter: ['eng.traineddata.gz'],
     },
   ],
-  // The OCR worker thread is started from real files (see src/main/capture/ocr-assets.ts) and the
-  // GDI screen grabber is a native module, which cannot be loaded from inside the asar archive.
+  // The OCR worker thread is started from real files (see src/main/capture/ocr-assets.ts), the
+  // speech worker thread likewise (src/main/speech/assets.ts), and the GDI screen grabber and the
+  // sherpa-onnx speech runtime are native modules: none of them can be loaded from inside the asar.
   asarUnpack: [
+    'out/main/speechWorker.js',
+    'node_modules/sherpa-onnx-node/**',
+    'node_modules/sherpa-onnx-win-x64/**',
     'node_modules/koffi/build/koffi/win32_x64/**',
     'node_modules/tesseract.js/src/**',
     'node_modules/tesseract.js-core/tesseract-core*-lstm.js',
