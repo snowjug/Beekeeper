@@ -21,17 +21,17 @@ afterEach(() => {
 });
 
 describe('with reduced motion', () => {
-  it('stands the glow frame still and shows the corner brackets at once', async () => {
+  it('stands the glow still, fully drawn, with nothing that snaps in', async () => {
     prefersReducedMotion();
     await renderStudio();
     const frame = screen.getByTestId('studio-frame');
     expect(frame).toHaveAttribute('data-still', 'true');
     expect(frame).toHaveAttribute('data-glow', 'on');
-    const brackets = frame.querySelectorAll<HTMLElement>('.bk-bracket');
-    expect(brackets).toHaveLength(4);
-    for (const bracket of brackets) {
-      expect(bracket.style.opacity).toBe('1');
-      expect(bracket.style.transform).toBe('none');
-    }
+    expect(frame.querySelector('.bk-studio-glow')).not.toBeNull();
+    expect(frame.querySelector('.bk-studio-ring')).not.toBeNull();
+    expect(frame.querySelectorAll('.bk-bracket')).toHaveLength(0);
+    // The picture is there at once: no fade or zoom from nothing.
+    expect(frame.style.opacity).toBe('1');
+    expect(frame.style.transform).toBe('none');
   });
 });

@@ -75,7 +75,7 @@ export function CaptureSection() {
         />
         <ToggleRow
           label="Glow frame"
-          description="An animated gradient frame with corner marks around the preview."
+          description="A softly flowing gradient glow around the preview."
           checked={capture.glowFrame}
           disabled={!capture.openStudio}
           onChange={(on) => setCapture('glowFrame', on)}

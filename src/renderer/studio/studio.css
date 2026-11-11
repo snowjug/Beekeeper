@@ -1,105 +1,197 @@
-/* Capture Studio: the glowing frame, corner brackets and tooltips.
-   The frame's colour sweep is one registered angle property animated in CSS (no script), shared
-   by the crisp ring and the blurred glow. */
-@property --glow-angle {
-  syntax: '<angle>';
-  inherits: true;
-  initial-value: 0deg;
+/* Capture Studio: the flowing glow around the picture, and tooltips.
+   The glow is a few colour layers that drift around the picture at different speeds and mix like liquid
+   light. The layers are rasterised once and only rotated (transforms and opacity, no repaint). When the
+   preview opens the glow blooms in and one ribbon of light flows once around the border; that ribbon is the
+   only thing that uses a registered property (--bk-head, how far round the border it has got). */
+@property --bk-head {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
 }
 
-@keyframes bk-glow-sweep {
+@keyframes bk-flow-bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
   to {
-    --glow-angle: 360deg;
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-.bk-studio-frame {
-  --glow-angle: 0deg;
-  animation: bk-glow-sweep 10s linear infinite;
+@keyframes bk-flow-run {
+  from {
+    --bk-head: 0%;
+  }
+
+  to {
+    --bk-head: 124%;
+  }
 }
 
-/* Reduced motion (or a still frame requested by the page): no sweep. */
-.bk-studio-frame[data-still='true'] {
-  animation: none;
+@keyframes bk-flow-head-fade {
+  0% {
+    opacity: 0;
+  }
+
+  14%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bk-flow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bk-flow-spin-back {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes bk-flow-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.62;
+  }
+
+  50% {
+    transform: scale(1.035);
+    opacity: 0.84;
+  }
+}
+
+/* The glow and the ring share one box: the picture's, plus 90px for the halo to spread into. */
+.bk-studio-aura {
+  position: absolute;
+  inset: -90px;
+  pointer-events: none;
+  animation: bk-flow-bloom 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* A colour layer: a square as big as the glow's diagonal (set by the component) turning about the picture. */
+.bk-flow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--bk-reach);
+  height: var(--bk-reach);
+  margin: calc(var(--bk-reach) / -2) 0 0 calc(var(--bk-reach) / -2);
+  will-change: transform;
+}
+
+.bk-flow-warm {
+  background: conic-gradient(in oklab from 0deg, #ffb300, #ff5a5f, #7c4dff, #00bcd4, #ffb300);
+  animation: bk-flow-spin 22s linear infinite;
+}
+
+.bk-flow-cool {
+  background: conic-gradient(in oklab from 140deg, #00bcd4, #7c4dff, #ff5a5f, #ffb300, #00bcd4);
+  opacity: 0.55;
+  animation: bk-flow-spin-back 31s linear infinite;
+}
+
+/* A soft ray of light that keeps circling the ring, against the colours. */
+.bk-flow-sheen {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 55%,
+    rgba(255, 255, 255, 0.95) 68%,
+    transparent 82% 100%
+  );
+  animation: bk-flow-spin-back 8s linear infinite;
 }
 
 .bk-studio-glow {
   position: absolute;
-  inset: -16px;
-  border-radius: 38px;
-  pointer-events: none;
-  opacity: 0.7;
-  filter: blur(24px);
-  background: conic-gradient(from var(--glow-angle), #ffb300, #ff5a5f, #7c4dff, #00bcd4, #ffb300);
+  inset: 60px;
+  border-radius: 58px;
+  overflow: hidden;
+  filter: blur(26px) saturate(1.3);
+  opacity: 0.74;
+  animation: bk-flow-breathe 9s ease-in-out infinite;
 }
 
+/* The ring is only the 3px that peek out around the picture, which covers the rest of it. */
 .bk-studio-ring {
   position: absolute;
+  inset: 87px;
+  border-radius: 31px;
+  overflow: hidden;
+}
+
+/* The ribbon of light that flows once around the border while the preview opens, then fades away. It is a
+   narrow, soft-edged band (a conic mask moving with --bk-head). A second copy of the band, one lap behind,
+   carries it across the seam at the top, so it never meets a hard edge; it fades in and out as well. */
+.bk-studio-head {
+  position: absolute;
   inset: -3px;
-  border-radius: 25px;
-  padding: 2px;
+  border-radius: 31px;
   pointer-events: none;
-  background: conic-gradient(from var(--glow-angle), #ffb300, #ff5a5f, #7c4dff, #00bcd4, #ffb300);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
+  background: #fff;
+  -webkit-mask-image:
+    conic-gradient(
+      from 0deg,
+      transparent calc(var(--bk-head) - 30%),
+      #000 calc(var(--bk-head) - 8%),
+      transparent var(--bk-head)
+    ),
+    conic-gradient(
+      from 0deg,
+      transparent calc(var(--bk-head) - 130%),
+      #000 calc(var(--bk-head) - 108%),
+      transparent calc(var(--bk-head) - 100%)
+    );
+  mask-image:
+    conic-gradient(
+      from 0deg,
+      transparent calc(var(--bk-head) - 30%),
+      #000 calc(var(--bk-head) - 8%),
+      transparent var(--bk-head)
+    ),
+    conic-gradient(
+      from 0deg,
+      transparent calc(var(--bk-head) - 130%),
+      #000 calc(var(--bk-head) - 108%),
+      transparent calc(var(--bk-head) - 100%)
+    );
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 22px rgba(255, 190, 90, 0.8));
+  animation:
+    bk-flow-run 1.7s cubic-bezier(0.42, 0.04, 0.24, 1) both,
+    bk-flow-head-fade 1.7s linear both;
+}
+
+/* Reduced motion (or a still frame requested by the page): the glow stands still, fully drawn. */
+.bk-studio-frame[data-still='true'] .bk-studio-aura,
+.bk-studio-frame[data-still='true'] .bk-studio-glow,
+.bk-studio-frame[data-still='true'] .bk-flow {
+  animation: none;
+}
+
+.bk-studio-frame[data-still='true'] .bk-studio-head {
+  display: none;
 }
 
 /* glowFrame = false: a plain, subtle border. */
 .bk-studio-plain {
   position: absolute;
   inset: 0;
-  border-radius: 22px;
+  border-radius: 28px;
   pointer-events: none;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.18),
     0 20px 52px rgba(0, 0, 0, 0.45);
-}
-
-.bk-bracket {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  pointer-events: none;
-  border: 0 solid #fff;
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8))
-    drop-shadow(0 0 14px rgba(124, 77, 255, 0.6));
-}
-
-.bk-bracket[data-corner='tl'] {
-  top: -12px;
-  left: -12px;
-  border-top-width: 3.5px;
-  border-left-width: 3.5px;
-  border-top-left-radius: 16px;
-}
-
-.bk-bracket[data-corner='tr'] {
-  top: -12px;
-  right: -12px;
-  border-top-width: 3.5px;
-  border-right-width: 3.5px;
-  border-top-right-radius: 16px;
-}
-
-.bk-bracket[data-corner='bl'] {
-  bottom: -12px;
-  left: -12px;
-  border-bottom-width: 3.5px;
-  border-left-width: 3.5px;
-  border-bottom-left-radius: 16px;
-}
-
-.bk-bracket[data-corner='br'] {
-  right: -12px;
-  bottom: -12px;
-  border-right-width: 3.5px;
-  border-bottom-width: 3.5px;
-  border-bottom-right-radius: 16px;
 }
 
 /* Tooltips: a label under (or over) the control, shown on hover and keyboard focus. */
@@ -153,7 +245,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bk-studio-frame {
+  .bk-studio-frame .bk-studio-aura,
+  .bk-studio-frame .bk-studio-glow,
+  .bk-studio-frame .bk-flow {
     animation: none;
+  }
+
+  .bk-studio-head {
+    display: none;
   }
 }

@@ -85,7 +85,7 @@ export const CircleSchema = z.object({
 export const CaptureSchema = z.object({
   /** Open the Studio preview after a capture (otherwise the capture is saved with a toast). */
   openStudio: z.boolean().default(true),
-  /** Animated gradient frame and corner brackets around the preview. */
+  /** Flowing gradient glow around the preview. */
   glowFrame: z.boolean().default(true),
   /** Save every capture to the screenshots folder right away. */
   autoSave: z.boolean().default(true),

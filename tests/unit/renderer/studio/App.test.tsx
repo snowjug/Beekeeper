@@ -49,23 +49,31 @@ describe('the preview', () => {
     ).toEqual(['Edit', 'Pin to screen', 'Copy', 'Share', 'Save']);
   });
 
-  it('gives the picture a glowing frame with four corner brackets', async () => {
+  it('gives the picture a flowing glow with a ring and a ribbon of light, and no corner marks', async () => {
     await renderStudio();
     const frame = screen.getByTestId('studio-frame');
     expect(frame).toHaveAttribute('data-glow', 'on');
     expect(frame).toHaveAttribute('data-still', 'false');
-    expect(frame.querySelectorAll('.bk-bracket')).toHaveLength(4);
-    expect(frame.querySelector('.bk-studio-ring')).not.toBeNull();
     expect(frame.querySelector('.bk-studio-glow')).not.toBeNull();
+    expect(frame.querySelector('.bk-studio-ring')).not.toBeNull();
+    expect(frame.querySelector('.bk-studio-head')).not.toBeNull();
+    expect(frame.querySelectorAll('.bk-flow').length).toBeGreaterThanOrEqual(3);
+    expect(frame.querySelectorAll('.bk-bracket')).toHaveLength(0);
+    // The colour layers are as big as the glow's diagonal, so they cover it in every rotation.
+    const reach = Number.parseFloat(frame.style.getPropertyValue('--bk-reach'));
+    const width = Number.parseFloat(frame.style.width);
+    const height = Number.parseFloat(frame.style.height);
+    expect(reach).toBeGreaterThanOrEqual(Math.hypot(width + 180, height + 180));
   });
 
-  it('draws a plain border without brackets when the glow frame is off', async () => {
+  it('draws a plain border without any glow when the glow frame is off', async () => {
     await renderStudio({ session: makeSession({ glowFrame: false }) });
     const frame = screen.getByTestId('studio-frame');
     expect(frame).toHaveAttribute('data-glow', 'off');
-    expect(frame.querySelectorAll('.bk-bracket')).toHaveLength(0);
     expect(frame.querySelector('.bk-studio-plain')).not.toBeNull();
-    expect(frame.querySelector('.bk-studio-ring')).toBeNull();
+    for (const selector of ['.bk-studio-ring', '.bk-studio-glow', '.bk-studio-head', '.bk-flow']) {
+      expect(frame.querySelector(selector)).toBeNull();
+    }
   });
 
   it('fits the picture inside the window and follows the theme of the capture', async () => {
