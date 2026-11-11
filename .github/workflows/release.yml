@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build installer and portable exe
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Publish release (installer, portable exe, latest.yml)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $files = @(
+            Get-ChildItem release -File |
+              Where-Object { $_.Name -match '^(Beekeeper-(Setup|Portable)-.*\.exe|Beekeeper-Setup-.*\.exe\.blockmap|latest\.yml)$' } |
+              ForEach-Object { $_.FullName }
+          )
+          if ($files.Count -eq 0) { throw 'No release artifacts were produced.' }
+          $notes = "See CHANGELOG.md for details. The builds are unsigned: SmartScreen shows 'More info' > 'Run anyway' on first run."
+          gh release view $tag 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @files --clobber
+          } else {
+            gh release create $tag @files --title "Beekeeper $tag" --notes $notes
+          }
