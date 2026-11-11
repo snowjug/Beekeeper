@@ -1,6 +1,24 @@
+import { randomUUID } from 'node:crypto';
+import { join, win32 } from 'node:path';
 import type { StudioSource } from '@shared/ipc/types';
 import type { FeatureDeps } from '../features/types';
-import { registerUnimplemented } from '../features/unimplemented';
+import { defaultExecFile, defaultSpawnDetached, resolveSystemPaths } from '../system/exec';
+import { createPowerShellRunner } from '../system/powershell';
+import { createWallpaperApi } from '../system/wallpaper';
+import { StudioActions } from './actions';
+import { createAssist } from './assist';
+import { StudioController } from './controller';
+import { nodeStudioFs, saveFolders, writeNewScreenshot } from './files';
+import { registerStudioHandlers } from './handlers';
+import { PinManager } from './pins';
+import {
+  createElectronPlatform,
+  createPinWindows,
+  createStudioWindows,
+  hideWindowOf,
+} from './platform.electron';
+import type { StudioSettings } from './session';
+import { createShareActions } from './share';
 
 export interface StudioFeature {
   /** Captures the display under the cursor and opens Capture Studio with the result. */
@@ -20,32 +38,84 @@ export interface StudioFeature {
   dispose(): void;
 }
 
-/** Placeholder until Capture Studio is implemented: every channel answers "not available". */
+/**
+ * Capture Studio: the preview that opens after a screenshot (frame, toolbar, edit, pin, share) and
+ * the pinned screenshots. Nothing exists until the first capture: no window, no timers.
+ */
 export function createStudio(deps: FeatureDeps): StudioFeature {
-  registerUnimplemented(deps.router, [
-    'capture:start',
-    'studio:getSession',
-    'studio:ready',
-    'studio:copy',
-    'studio:save',
-    'studio:pin',
-    'studio:wallpaper',
-    'studio:share',
-    'studio:assist',
-    'studio:delete',
-    'studio:openFolder',
-    'studio:close',
-    'pin:getInfo',
-    'pin:action',
-  ]);
-  const unavailable = (): Promise<void> => {
-    deps.ctx.logger.warn('Capture Studio is not available in this build');
-    return Promise.resolve();
-  };
+  const { ctx, router, captures, ocr, captureScreen } = deps;
+  const logger = ctx.logger.scope('studio');
+  const platform = createElectronPlatform(ctx.windows);
+  const systemPaths = resolveSystemPaths(process.env);
+
+  const settings = (): StudioSettings => ({
+    capture: ctx.settings.get().capture,
+    aiAvailable: ctx.ai.isConfigured(),
+  });
+  const saveNew = (png: Buffer): Promise<string> =>
+    writeNewScreenshot(
+      nodeStudioFs,
+      saveFolders(settings().capture.saveFolder, ctx.paths.picturesDir),
+      png,
+      new Date(),
+    );
+
+  const controller = new StudioController({
+    windows: createStudioWindows(ctx.windows),
+    platform,
+    settings,
+    captures,
+    captureScreen,
+    fs: nodeStudioFs,
+    saveNew,
+    logger,
+  });
+  const pins = new PinManager({
+    windows: createPinWindows(ctx.windows),
+    captures,
+    platform,
+    saveImage: saveNew,
+    newId: randomUUID,
+    logger,
+  });
+  const actions = new StudioActions({
+    session: controller,
+    platform,
+    fs: nodeStudioFs,
+    settings,
+    saveNew,
+    picturesDir: ctx.paths.picturesDir,
+    share: createShareActions({
+      runner: createPowerShellRunner({
+        exec: defaultExecFile,
+        powershellPath: systemPaths.powershell,
+        scriptsDir: win32.join(ctx.paths.resourcesDir, 'scripts'),
+        platform: process.platform,
+        logger,
+      }),
+      spawnDetached: defaultSpawnDetached,
+      paths: systemPaths,
+      platform: process.platform,
+      logger,
+    }),
+    wallpaper: createWallpaperApi({
+      directory: join(ctx.paths.userData, 'wallpaper'),
+      fs: nodeStudioFs,
+      logger,
+    }),
+    pins,
+    assist: createAssist({ ocr, logger }),
+    logger,
+  });
+  registerStudioHandlers({ router, controller, actions, pins, hideWindow: hideWindowOf });
+
   return {
-    capture: unavailable,
-    openFile: unavailable,
-    openImage: unavailable,
-    dispose: () => undefined,
+    capture: (source) => controller.capture(source),
+    openFile: (shot, source) => controller.openFile(shot, source),
+    openImage: (png, size, source) => controller.openImage(png, size, source),
+    dispose() {
+      pins.closeAll();
+      controller.dispose();
+    },
   };
 }

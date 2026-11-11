@@ -36,7 +36,23 @@ export type UiIcon =
   | 'wind'
   | 'snow'
   | 'bolt'
-  | 'fog';
+  | 'fog'
+  | 'more'
+  | 'share'
+  | 'undo'
+  | 'redo'
+  | 'crop'
+  | 'pen'
+  | 'highlighter'
+  | 'arrow'
+  | 'rect'
+  | 'ellipse'
+  | 'text'
+  | 'pixelate'
+  | 'eraser'
+  | 'folder'
+  | 'contrast'
+  | 'pointer';
 
 export type IconName = CardIcon | UiIcon;
 
@@ -359,6 +375,59 @@ const PATHS: Record<IconName, JSX.Element> = {
   snow: <path d="M12 3v18M4.500 7.500l15 9M19.500 7.500l-15 9" />,
   bolt: <path d="m13 3-7 10h5l-1 8 7-10h-5z" />,
   fog: <path d="M4 9h16M6 13h12M4 17h16" />,
+  more: (
+    <>
+      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+      <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+    </>
+  ),
+  share: (
+    <>
+      <circle cx="6" cy="12" r="2.4" />
+      <circle cx="18" cy="6" r="2.4" />
+      <circle cx="18" cy="18" r="2.4" />
+      <path d="m8.2 10.9 7.6-3.8M8.2 13.1l7.6 3.8" />
+    </>
+  ),
+  undo: <path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" />,
+  redo: <path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" />,
+  crop: <path d="M7 3v14a1 1 0 0 0 1 1h13M3 7h14a1 1 0 0 1 1 1v13" />,
+  pen: <path d="M3.5 17c2.5-6 4.5-10 6.5-10s1.5 7 4 7 3-4 6.5-4" />,
+  highlighter: (
+    <>
+      <path d="m14 5 5 5-8 8H6v-5z" />
+      <path d="M4 21h9" />
+    </>
+  ),
+  arrow: <path d="M5 19 19 5M9 5h10v10" />,
+  rect: <rect x="4" y="6" width="16" height="12" rx="1.5" />,
+  ellipse: <ellipse cx="12" cy="12" rx="8.5" ry="6" />,
+  text: <path d="M5 6V4.5h14V6M12 4.5V20M9 20h6" />,
+  pixelate: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1" fill="currentColor" />
+      <rect x="13" y="4" width="7" height="7" rx="1" />
+      <rect x="4" y="13" width="7" height="7" rx="1" />
+      <rect x="13" y="13" width="7" height="7" rx="1" fill="currentColor" />
+    </>
+  ),
+  eraser: (
+    <>
+      <path d="m7 20-3.5-3.5a2 2 0 0 1 0-2.8L13 4.2a2 2 0 0 1 2.8 0l4 4a2 2 0 0 1 0 2.8L11.5 19.5" />
+      <path d="M7 20h13M8.5 9.5l6 6" />
+    </>
+  ),
+  folder: (
+    <path d="M3.5 7.5a2 2 0 0 1 2-2H10l2 2.5h6.5a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />
+  ),
+  contrast: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" />
+    </>
+  ),
+  pointer: <path d="m5 4 14 6.5-6 2-2 6z" />,
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name' | 'children'> {

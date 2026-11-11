@@ -93,6 +93,28 @@ describe('screenshot run', () => {
     expect(result.speech).toBe('Screenshot saved.');
   });
 
+  it('opens the saved screenshot in Capture Studio', async () => {
+    const path = 'C:\\Users\\me\\Pictures\\Beekeeper\\Screenshot 2026-11-10 16-20-53.png';
+    const harness = createHarness({
+      system: { takeScreenshot: () => Promise.resolve({ path, width: 1920, height: 1080 }) },
+    });
+    await runCommand(screenshotCommand, {}, harness);
+
+    expect(harness.ui.openCaptureStudio).toHaveBeenCalledTimes(1);
+    expect(harness.ui.openCaptureStudio).toHaveBeenCalledWith({ path, width: 1920, height: 1080 });
+  });
+
+  it('does not open Capture Studio when the screenshot failed', async () => {
+    const harness = createHarness({
+      system: {
+        takeScreenshot: () =>
+          Promise.reject(new SystemError('failed', 'Could not capture the screen.')),
+      },
+    });
+    await runCommand(screenshotCommand, {}, harness);
+    expect(harness.ui.openCaptureStudio).not.toHaveBeenCalled();
+  });
+
   it('explains a failed capture', async () => {
     const harness = createHarness({
       system: {

@@ -9,6 +9,7 @@ export type PowerShellScript =
   | 'audio'
   | 'battery'
   | 'brightness'
+  | 'clipboard-file'
   | 'close-windows'
   | 'recycle-bin'
   | 'sleep'

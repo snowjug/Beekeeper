@@ -68,6 +68,8 @@ export const screenshotCommand = defineCommand<NoSlots>({
         { type: 'path', label: 'Show in folder', path: shot.path, mode: 'reveal' },
       ],
     };
+    // The file is saved and the card says so; the preview opens on top (Capture Studio, if enabled).
+    ctx.services.ui.openCaptureStudio({ path: shot.path, width: shot.width, height: shot.height });
     return { cards: [card], speech: 'Screenshot saved.' };
   },
 });
