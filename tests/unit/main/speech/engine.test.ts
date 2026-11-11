@@ -104,7 +104,7 @@ function setup(
     },
     settings: () => settings,
     keys: { get: () => (options.key === undefined ? null : options.key) },
-    fetch: options.fetch ?? (vi.fn()),
+    fetch: options.fetch ?? vi.fn(),
     logger,
     idleMs: options.idleMs ?? 1000,
     threads: 2,

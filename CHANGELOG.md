@@ -4,6 +4,64 @@ All notable changes to Beekeeper are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-11
+
+A Beekeeper that sounds human and understands your accent: an on-device natural voice, Whisper recognition,
+Hindi and Hinglish, a new icon and a Samsung-style Capture Studio.
+
+### Added
+
+- **Natural voice.** Replies are spoken by [Supertonic 3](https://huggingface.co/Supertone/supertonic-3) running on
+  your PC (sherpa-onnx): ten voices, English and Hindi, speaking speed, sentence-by-sentence streaming so the first
+  words start quickly. Windows voices remain as the fallback; ElevenLabs (your own key and voice ID) and Azure
+  neural voices stay optional.
+- **Whisper recognition** (small or base, on-device) replaces the small Vosk model as the default: Indian-accented
+  English, Hindi and Hinglish with automatic language detection. Vosk stays as the light 40 MB option and for the
+  wake word.
+- **Model packs**: downloaded on demand from the first-run tour or Settings > Voice, resumable, verified against
+  pinned SHA-256 sums, loaded when needed and released after three idle minutes (idle memory is unchanged).
+- **Hindi and Hinglish commands.** Devanagari, Romanised and mixed sentences are understood by every command
+  (410 corpus phrases, spelling-slip replays and 120 negative cases in the tests), and replies come back in Hindi.
+- **Capture Studio** (`Alt+Shift+S`, tray, Settings, "take a screenshot"): a glowing gradient frame with corner
+  brackets around the capture, **Photo assist** (extract the text, or find and blur sensitive information: e-mail
+  addresses, phone, card and ID numbers, one-time codes, keys), **Set as wallpaper**, and a toolbar with **Edit**
+  (crop, pen, highlighter, arrow, shapes, text, blur, undo/redo), **Pin to screen**, **Copy**, **Share** (copy as
+  file, open with, e-mail, show in folder) and **Save** (`Pictures\Beekeeper` by default).
+- **Pinned screenshots**: always-on-top copies you can drag, zoom with the wheel, make see-through with
+  `Ctrl` + wheel or the slider, click through, copy, save and close.
+- **Dictation anywhere** (`Alt+Shift+D`, or "start dictation"): speak in English, Hindi or both and the text is typed
+  into the focused app, with spoken punctuation ("comma", "full stop", "new line", "पूर्ण विराम"), filler removal
+  and hallucination filtering. Typing never goes into Beekeeper's own windows or an elevated app (the text is
+  copied instead).
+- **Daily briefing** ("good morning", "brief me": date, weather, today's reminders and timers, notes) and **repeat**
+  ("say that again") commands, with Hindi equivalents.
+- **New icon**: a bee in a honeycomb, with new tray glyphs (animated sound waves while listening), installer art
+  and banner.
+- Settings pages for **Voice** (language, recognition model, ten voices with previews, ElevenLabs), **Capture
+  Studio** and **Dictation**; the first-run tour gained a **Language & voice** step.
+- Circle to Search **Speak** reads the selection aloud with the natural voice.
+- Two more rebindable global hotkeys (`Alt+Shift+S`, `Alt+Shift+D`) and tray entries for both.
+
+### Changed
+
+- New installs default to Whisper and the natural voice; until the packs are downloaded Beekeeper falls back to the
+  1.0 engines and offers the download. People upgrading from 1.0 keep the engines they had and get a one-time hint in
+  the bar that the new ones exist.
+- "Take a screenshot" opens Capture Studio (turn "Open the preview" off in Settings > Capture Studio for the old quiet
+  save).
+- Brand names that Whisper mishears ("open crow" for Chrome) are recovered through alias phrases.
+- The installer grew from 117 MB to 122 MB (the sherpa-onnx runtime); the portable build from 105 MB to 110 MB.
+
+### Security
+
+- Model downloads come from pinned URLs and revisions and are checked against SHA-256 sums before anything is
+  extracted or loaded; the speech runtime runs in worker threads the main process owns and terminates.
+- Capture Studio actions work only on pictures the session itself created, file paths are validated, and shares use
+  `execFile` argument arrays.
+- Dictation validates the focused window before typing and never types into protected or Beekeeper windows.
+
+[1.1.0]: https://github.com/snowjug/Beekeeper/releases/tag/v1.1.0
+
 ## [1.0.0] - 2026-11-11
 
 First public release.

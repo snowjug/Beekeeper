@@ -39,16 +39,23 @@ architecture is built around "renderers cannot do anything the main process has 
 - **Navigation is blocked.** Windows cannot navigate away from `beekeeper://app/...` and cannot
   open new windows; external links open in the default browser through `shell.openExternal`, only
   for validated `http(s)` URLs (and `mailto:` built from a validated address).
-- **Secrets.** Azure keys are stored with Electron `safeStorage` (Windows DPAPI), never reach a
+- **Secrets.** Azure and ElevenLabs keys are stored with Electron `safeStorage` (Windows DPAPI), never reach a
   renderer (the UI only sees a masked hint) and are redacted from logs. The Speech SDK gets a
-  short-lived token minted in the main process.
+  short-lived token minted in the main process; ElevenLabs requests are made by the main process only.
 - **Files.** The custom protocol serves only the bundled renderer, the voice model file and
   in-memory captures; path traversal is rejected. Paths received from the UI are checked against
-  Beekeeper-owned folders.
-- **Native code.** The only native module is [koffi](https://koffi.dev) (MIT, prebuilt binary), which
-  calls `user32`/`gdi32` to take a screenshot in about 40 ms. It is loaded lazily in the main
-  process, never from a renderer, and Beekeeper falls back to Electron's `desktopCapturer` if it
-  cannot load.
+  Beekeeper-owned folders; the Capture Studio only ever touches files it created itself.
+- **Model downloads are pinned.** The natural voice, Whisper and the optional Vosk model are downloaded over HTTPS,
+  checked against a size and SHA-256 sum that is compiled into the app, and installed atomically; a file that does not
+  match is deleted. The only archive (`.tar.bz2`) is unpacked with the Windows `tar.exe` after its checksum matched, into a
+  scratch folder, and the expected files are verified before they are moved into place. Models are data, never code.
+- **Native code.** The native modules are [koffi](https://koffi.dev) (MIT, prebuilt binary), which calls
+  `user32`/`gdi32` to take a screenshot in about 40 ms and `SendInput` to type dictated text, and
+  [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0, prebuilt ONNX Runtime), which runs the speech models
+  inside worker threads of the main process. They are loaded lazily in the main process, never from a renderer, and
+  Beekeeper falls back to Electron's `desktopCapturer` / the Windows voice if they cannot load.
+- **Typing is guarded.** Dictation types only into the window that had the focus when it started: if the focus moved, or
+  Windows refuses synthetic input (an elevated app), the text goes to the clipboard instead. Transcripts are never logged.
 - **Dangerous actions need confirmation.** Shutdown, restart, sleep, empty recycle bin and force
   close always ask first; power actions add a 10 second cancel countdown.
 - **Updates** come from GitHub Releases over HTTPS through `electron-updater` (and are disabled for the
@@ -58,7 +65,11 @@ architecture is built around "renderers cannot do anything the main process has 
 ## Dependencies
 
 Dependencies are pinned through `package-lock.json`. `npm audit` is run before every release; the
-result for the current release is recorded in `BUILD_LOG.md`. For 1.0.0 there are no high or
-critical findings. The moderate ones are `minimatch` (reached only through the ESLint toolchain,
+result for the current release is recorded in `BUILD_LOG.md`. For 1.1.0 the production tree
+(`npm audit --omit=dev`) has no findings at all. The full-tree audit was rate limited by the build
+machine's registry proxy (HTTP 429), so for the development tooling the 1.0.0 result stands (no high or
+critical findings): the moderate ones are `minimatch` (reached only through the ESLint toolchain,
 dev-only) and `uuid` inside `vosk-browser`, whose advisory concerns the `v3`/`v5`/`v6` functions with a
 caller-supplied buffer - the recogniser only generates random `v4` message ids.
+1.1.0 adds one runtime dependency, `sherpa-onnx-node` (Apache-2.0, prebuilt N-API binaries from the
+k2-fsa project), which only ever opens the pinned, hash-verified model packs.
