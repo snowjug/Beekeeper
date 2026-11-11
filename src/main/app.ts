@@ -129,6 +129,11 @@ export function bootstrap(mainDir: string): AppContext {
   const devOrigin = process.env['ELECTRON_RENDERER_URL'] ?? null;
   const portable = Boolean(process.env['PORTABLE_EXECUTABLE_DIR']);
   const e2e = process.env['BEEKEEPER_E2E'] === '1';
+  if (e2e) {
+    // A mis-heard sentence falls back to a web search: end-to-end runs must never start the
+    // developer's own browser.
+    shell.openExternal = () => Promise.resolve();
+  }
 
   app.setAppUserModelId(APP_ID);
   const paths = resolveAppPaths(mainDir);
