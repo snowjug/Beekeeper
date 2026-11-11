@@ -2,11 +2,13 @@ import { createStore, type StoreApi } from 'zustand';
 import type {
   AppInfo,
   HotkeyStatus,
+  SpeechState,
   UpdateState,
   VoiceModelState,
   WorkerStatus,
 } from '@shared/ipc/types';
 import type { SettingsPatch, SettingsView } from '@shared/settings';
+import type { SpeechPackId } from '@shared/speech/packs';
 import { DEFAULT_SECTION, type SettingsPage } from './lib/nav';
 import { applyPatch } from './lib/patch';
 
@@ -30,6 +32,12 @@ export interface SettingsState {
   hotkeys: HotkeyStatus | null;
   updates: UpdateState;
   model: VoiceModelState | null;
+  /** On-device speech packs (natural voice, Whisper); null until the status was read. */
+  speech: SpeechState | null;
+  /** Why the speech status could not be read; null while it is known or still loading. */
+  speechError: string | null;
+  /** Friendly reason the main process refused a pack action (start, cancel or remove). */
+  packErrors: Partial<Record<SpeechPackId, string>>;
   /** Latest report of the wake-word worker; null until it has reported once. */
   wake: WorkerStatus | null;
   section: SettingsPage;
@@ -56,6 +64,9 @@ export function createSettingsStore(section: SettingsPage = DEFAULT_SECTION): Se
     hotkeys: null,
     updates: { status: 'idle' },
     model: null,
+    speech: null,
+    speechError: null,
+    packErrors: {},
     wake: null,
     section,
   }));

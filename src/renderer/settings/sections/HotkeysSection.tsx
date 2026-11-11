@@ -19,6 +19,16 @@ export function HotkeysSection() {
           label="Circle to Search"
           description="Freeze the screen and circle anything to read, copy, translate or search it."
         />
+        <HotkeyRow
+          id="capture"
+          label="Capture Studio"
+          description="Take a screenshot with a live preview to mark up, pin, copy, share or save."
+        />
+        <HotkeyRow
+          id="dictation"
+          label="Dictation"
+          description="Speak, and Beekeeper types what you said in any app."
+        />
       </SettingsGroup>
     </SectionPage>
   );

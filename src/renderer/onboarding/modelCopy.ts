@@ -11,14 +11,29 @@ function sentence(text: string): string {
   return /[.!?…]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-/** Headline and explanation for the voice-model card (`paused` = the user pressed Pause). */
-export function describeModelCopy(view: ModelView | null, paused: boolean): ModelCopy {
-  if (!view) return { headline: 'Checking the voice model…', detail: 'One moment.' };
+/** Which download the copy is about: the small offline model, or the natural voice + Whisper. */
+export type DownloadKind = 'model' | 'speech';
+
+/** Headline and explanation for the download card (`paused` = the user pressed Pause). */
+export function describeModelCopy(
+  view: ModelView | null,
+  paused: boolean,
+  kind: DownloadKind = 'model',
+): ModelCopy {
+  if (!view) {
+    return {
+      headline: kind === 'speech' ? 'Checking the downloads…' : 'Checking the voice model…',
+      detail: 'One moment.',
+    };
+  }
   switch (view.phase) {
     case 'missing':
       return {
         headline: 'Not downloaded yet',
-        detail: 'Download it now, or skip — you can always type your commands instead.',
+        detail:
+          kind === 'speech'
+            ? 'Download it now, or skip — you can always type your commands, and the Windows voice keeps reading answers.'
+            : 'Download it now, or skip — you can always type your commands instead.',
       };
     case 'partial':
       return {
@@ -36,10 +51,16 @@ export function describeModelCopy(view: ModelView | null, paused: boolean): Mode
         detail: 'Making sure the file is complete and unmodified.',
       };
     case 'ready':
-      return {
-        headline: 'Voice model ready',
-        detail: 'Voice commands now work offline — no internet or keys needed.',
-      };
+      return kind === 'speech'
+        ? {
+            headline: 'Voice and recognition ready',
+            detail:
+              'Beekeeper now sounds natural and understands Hindi and English — all on this PC.',
+          }
+        : {
+            headline: 'Voice model ready',
+            detail: 'Voice commands now work offline — no internet or keys needed.',
+          };
     case 'error':
       return {
         headline: 'The download didn’t finish',

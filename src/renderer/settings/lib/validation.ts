@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { invokeSchemas } from '@shared/ipc/schemas';
-import { AiSchema, GeneralSchema, VoiceSchema } from '@shared/settings';
+import { AiSchema, CaptureSchema, GeneralSchema, VoiceSchema } from '@shared/settings';
 
 /** Returns a friendly problem description, or null when the value may be sent to the main process. */
 export type FieldCheck = (value: string) => string | null;
@@ -28,6 +28,34 @@ export const validateAzureVoice = fromSchema(
   VoiceSchema.shape.azureVoice,
   'Enter a voice name with letters, digits and dashes, for example en-US-AriaNeural.',
 );
+
+export const validateElevenLabsVoiceId = fromSchema(
+  VoiceSchema.shape.elevenLabsVoiceId,
+  'A voice ID has letters and digits only (up to 40). Copy it from your ElevenLabs Voice Library.',
+);
+
+const saveFolderLength = fromSchema(
+  CaptureSchema.shape.saveFolder,
+  'That folder path is too long (up to 260 characters).',
+);
+
+/** `C:\` or `C:/` or a network share (`\\server\share`). */
+const ABSOLUTE_WINDOWS_PATH = /^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/])/;
+const INVALID_PATH_CHARS = /[<>:"|?*]/;
+
+/** Empty (Pictures\Beekeeper) or a full Windows folder path. */
+export const validateSaveFolder: FieldCheck = (value) => {
+  if (value === '') return null;
+  const tooLong = saveFolderLength(value);
+  if (tooLong) return tooLong;
+  if (!ABSOLUTE_WINDOWS_PATH.test(value)) {
+    return 'Enter the full path, for example C:\\Users\\you\\Pictures\\Screenshots, or leave it empty.';
+  }
+  if (INVALID_PATH_CHARS.test(value.slice(2))) {
+    return 'A folder name cannot contain < > : " | ? or *.';
+  }
+  return null;
+};
 
 const manualLocation = GeneralSchema.shape.weatherLocation;
 

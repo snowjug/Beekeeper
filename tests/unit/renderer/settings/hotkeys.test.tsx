@@ -23,15 +23,18 @@ async function mount(handlers: Handlers = {}, configure?: Parameters<typeof make
 }
 
 const assistantChange = () => screen.getAllByRole('button', { name: 'Change' })[0]!;
+const rowChange = (index: number) => screen.getAllByRole('button', { name: 'Change' })[index]!;
 
 describe('Hotkeys section', () => {
-  it('shows both shortcuts as key caps with their registration status', async () => {
+  it('shows all four shortcuts as key caps with their registration status', async () => {
     const h = await mount();
-    expect(screen.getByText('Assistant')).toBeInTheDocument();
-    expect(screen.getByText('Circle to Search')).toBeInTheDocument();
+    for (const name of ['Assistant', 'Circle to Search', 'Capture Studio', 'Dictation']) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
     expect(screen.getByText('Space')).toBeInTheDocument();
-    expect(screen.getAllByText('Shift')).toHaveLength(2);
-    expect(screen.getAllByText('Registered')).toHaveLength(2);
+    expect(screen.getAllByText('Shift')).toHaveLength(4);
+    expect(screen.getAllByText('Registered')).toHaveLength(4);
+    expect(screen.getAllByRole('button', { name: 'Change' })).toHaveLength(4);
     h.stop();
   });
 
@@ -74,7 +77,51 @@ describe('Hotkeys section', () => {
     );
     await waitFor(() => expect(toastTitles()).toEqual(['Shortcut changed']));
     expect(screen.queryByText(/Press the new shortcut/)).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Change' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Change' })).toHaveLength(4);
+    h.stop();
+  });
+
+  it('rebinds the Capture Studio and Dictation shortcuts under their own ids', async () => {
+    const user = userEvent.setup();
+    const h = await mount({
+      'hotkeys:set': (input) => ({ ok: true, accelerator: input.accelerator }),
+    });
+
+    await user.click(rowChange(2));
+    await user.keyboard('{Control>}{Alt>}s{/Alt}{/Control}');
+    await waitFor(() =>
+      expect(h.inputsOf('hotkeys:set')).toEqual([{ id: 'capture', accelerator: 'Ctrl+Alt+S' }]),
+    );
+    await waitFor(() => expect(toastTitles()).toEqual(['Shortcut changed']));
+
+    await user.click(rowChange(3));
+    await user.keyboard('{Control>}{Alt>}d{/Alt}{/Control}');
+    await waitFor(() =>
+      expect(h.inputsOf('hotkeys:set').at(-1)).toEqual({
+        id: 'dictation',
+        accelerator: 'Ctrl+Alt+D',
+      }),
+    );
+    await waitFor(() => expect(toastTitles()).toHaveLength(2));
+    h.stop();
+  });
+
+  it('records one shortcut at a time: starting another row cancels the first', async () => {
+    const user = userEvent.setup();
+    const h = await mount({ 'hotkeys:set': () => ({ ok: true, accelerator: 'Ctrl+Alt+K' }) });
+
+    await user.click(rowChange(0));
+    expect(screen.getAllByText(/Press the new shortcut/)).toHaveLength(1);
+    // The Assistant row now shows Cancel instead of Change, so Circle to Search is the first Change.
+    await user.click(rowChange(0));
+    expect(screen.getAllByText(/Press the new shortcut/)).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Cancel' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Change' })).toHaveLength(3);
+
+    await user.keyboard('{Control>}{Alt>}k{/Alt}{/Control}');
+    await waitFor(() =>
+      expect(h.inputsOf('hotkeys:set')).toEqual([{ id: 'circle', accelerator: 'Ctrl+Alt+K' }]),
+    );
     h.stop();
   });
 
@@ -189,8 +236,9 @@ describe('Hotkeys section', () => {
       },
     );
     const resets = screen.getAllByRole('button', { name: 'Reset to default' });
+    expect(resets).toHaveLength(4);
     expect(resets[0]).toBeEnabled();
-    expect(resets[1]).toBeDisabled();
+    expect(resets.slice(1).every((button) => button.hasAttribute('disabled'))).toBe(true);
 
     await user.click(resets[0]!);
     await waitFor(() =>

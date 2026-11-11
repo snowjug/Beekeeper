@@ -53,7 +53,7 @@ export function GeneralSection() {
         />
         <SettingRow
           label="Welcome tour"
-          description="Walk through the microphone, voice model and shortcuts setup again."
+          description="Walk through the language, voice, microphone and shortcuts setup again."
         >
           <Button
             size="sm"
@@ -78,9 +78,12 @@ export function GeneralSection() {
             onChange={(theme) => setGeneral('theme', theme)}
           />
         </SettingRow>
-        <SettingRow label="Language" description="Beekeeper understands English (US) for now.">
+        <SettingRow
+          label="Display language"
+          description="Beekeeper's windows are in English for now. Choose the language you speak under Voice."
+        >
           <SelectField
-            label="Language"
+            label="Display language"
             value={general.language}
             options={LANGUAGES}
             onChange={() => undefined}

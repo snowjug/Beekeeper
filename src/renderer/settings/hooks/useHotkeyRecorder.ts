@@ -28,6 +28,9 @@ const FAILED_TO_SEND: HotkeySetResult = {
 /** Key releases (and auto-repeats) of the combination just pressed must not leak into the page. */
 const RELEASE_GRACE_MS = 600;
 
+/** Only one shortcut records at a time: starting a recording cancels the one in progress. */
+let cancelActiveRecording: (() => void) | null = null;
+
 function swallow(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
@@ -85,13 +88,22 @@ export function useHotkeyRecorder(
     [apply, send],
   );
 
-  const start = useCallback((): void => {
-    apply({ type: 'start' });
-  }, [apply]);
-
   const cancel = useCallback((): void => {
     apply({ type: 'cancel' });
   }, [apply]);
+
+  useEffect(
+    () => () => {
+      if (cancelActiveRecording === cancel) cancelActiveRecording = null;
+    },
+    [cancel],
+  );
+
+  const start = useCallback((): void => {
+    if (cancelActiveRecording !== null && cancelActiveRecording !== cancel) cancelActiveRecording();
+    cancelActiveRecording = cancel;
+    apply({ type: 'start' });
+  }, [apply, cancel]);
 
   const capturing = state.phase === 'recording' || state.phase === 'saving';
   useEffect(() => {

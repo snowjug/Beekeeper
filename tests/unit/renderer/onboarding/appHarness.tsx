@@ -30,17 +30,17 @@ export const heading = (name: string | RegExp) => screen.findByRole('heading', {
 export const button = (name: string | RegExp) => screen.getByRole('button', { name });
 export const liveRegion = () => document.querySelector('[aria-live="polite"]');
 
-export type Target = 'microphone' | 'model' | 'hotkeys' | 'done';
+export type Target = 'language' | 'microphone' | 'hotkeys' | 'done';
 
 /** Clicks through the footer buttons of the default scenario (nothing downloaded, mic untested). */
 export async function goTo(user: User, target: Target): Promise<void> {
   const route: Array<[string, RegExp]> = [
-    ['Get started', /try your microphone/i],
-    ['Skip for now', /voice model/i],
-    ['Not now', /anywhere/i],
+    ['Get started', /language & voice/i],
+    ['Skip for now', /try your microphone/i],
+    ['Skip for now', /anywhere/i],
     ['Continue', /all set/i],
   ];
-  const last = ['microphone', 'model', 'hotkeys', 'done'].indexOf(target);
+  const last = ['language', 'microphone', 'hotkeys', 'done'].indexOf(target);
   await heading('Meet Beekeeper');
   for (const [label, next] of route.slice(0, last + 1)) {
     await user.click(button(label));

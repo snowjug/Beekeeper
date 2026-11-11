@@ -1,10 +1,11 @@
 import { SettingsGroup, ToggleRow } from '@renderer/components/forms';
 import { useSetter, useView } from '../context';
 import { SectionPage } from '../ui/SectionPage';
+import { AssistantVoiceGroup } from './voice/AssistantVoiceGroup';
+import { LanguageGroup } from './voice/LanguageGroup';
+import { ListeningGroup } from './voice/ListeningGroup';
 import { MicrophoneGroup } from './voice/MicrophoneGroup';
 import { RecognitionGroup } from './voice/RecognitionGroup';
-import { SpeechGroup } from './voice/SpeechGroup';
-import { VoiceModelCard } from './voice/VoiceModelCard';
 
 export function VoiceSection() {
   const { voice } = useView();
@@ -12,9 +13,10 @@ export function VoiceSection() {
   return (
     <SectionPage section="voice">
       <MicrophoneGroup />
+      <LanguageGroup />
       <RecognitionGroup />
-      <VoiceModelCard />
-      <SpeechGroup />
+      <ListeningGroup />
+      <AssistantVoiceGroup />
       <SettingsGroup title="Sounds">
         <ToggleRow
           label="Sound effects"

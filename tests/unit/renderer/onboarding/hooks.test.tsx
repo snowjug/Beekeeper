@@ -1,10 +1,19 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { VoiceModelState } from '@shared/ipc/types';
+import type { SpeechState, VoiceModelState } from '@shared/ipc/types';
 import { useAppearance } from '@renderer/onboarding/hooks/useAppearance';
 import { useSettings, DEFAULT_VOICE_PREFS } from '@renderer/onboarding/hooks/useSettings';
+import { useSpeechPacks } from '@renderer/onboarding/hooks/useSpeechPacks';
 import { useVoiceModel } from '@renderer/onboarding/hooks/useVoiceModel';
-import { APP_INFO, createFakeBridge, modelState, settingsView } from './testUtils';
+import { BEST_PACKS } from '@renderer/onboarding/packFormat';
+import {
+  APP_INFO,
+  createFakeBridge,
+  modelState,
+  readyPack,
+  settingsView,
+  speechState,
+} from './testUtils';
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -156,7 +165,181 @@ describe('useVoiceModel', () => {
   });
 });
 
+describe('useSpeechPacks', () => {
+  it('reads the status once and follows speech:state events', async () => {
+    const fake = createFakeBridge();
+    const { result, unmount } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    expect(result.current.state).toBeNull();
+    await flush();
+    expect(result.current.state?.packs['whisper-small'].state).toBe('missing');
+    expect(fake.inputsOf('speech:status')).toHaveLength(1);
+    act(() => fake.emit('speech:state', speechState({ 'supertonic-3': { state: 'downloading' } })));
+    expect(result.current.state?.packs['supertonic-3'].state).toBe('downloading');
+    unmount();
+    expect(fake.listenerCount('speech:state')).toBe(0);
+  });
+
+  it('prefers a speech:state event over an older status reply', async () => {
+    const fake = createFakeBridge();
+    const status = deferred<SpeechState>();
+    fake.handle('speech:status', () => status.promise);
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    act(() =>
+      fake.emit('speech:state', speechState({ 'whisper-small': { state: 'downloading' } })),
+    );
+    status.resolve(speechState());
+    await flush();
+    expect(result.current.state?.packs['whisper-small'].state).toBe('downloading');
+  });
+
+  it('reports a status that cannot be read', async () => {
+    const fake = createFakeBridge();
+    fake.handle('speech:status', () => {
+      throw new Error('ipc down');
+    });
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    expect(result.current.state).toBeNull();
+    expect(result.current.error).toBe('Couldn’t check the downloads right now.');
+    expect(fake.inputsOf('app:log')).toHaveLength(1);
+  });
+
+  it('starts only what is missing, showing the downloads as started at once', async () => {
+    const fake = createFakeBridge();
+    fake.handle('speech:status', () => speechState({ 'supertonic-3': readyPack('supertonic-3') }));
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    act(() => result.current.start());
+    expect(result.current.started).toBe(true);
+    expect(result.current.state?.packs['whisper-small'].state).toBe('downloading');
+    expect(result.current.state?.packs['supertonic-3'].state).toBe('ready');
+    await flush();
+    expect(fake.inputsOf('speech:ensurePack')).toEqual([{ pack: 'whisper-small' }]);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('ignores a stale error in the reply of a restarted download', async () => {
+    const fake = createFakeBridge();
+    const stale = () =>
+      speechState({
+        'whisper-small': { state: 'error', message: 'No internet connection' },
+        'supertonic-3': readyPack('supertonic-3'),
+      });
+    fake.handle('speech:status', stale);
+    fake.handle('speech:ensurePack', stale);
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    act(() => result.current.start());
+    await flush();
+    expect(fake.inputsOf('speech:ensurePack')).toEqual([{ pack: 'whisper-small' }]);
+    expect(result.current.state?.packs['whisper-small'].state).toBe('downloading');
+  });
+
+  it('puts the state back and reports a friendly error when starting fails', async () => {
+    const fake = createFakeBridge();
+    fake.handle('speech:ensurePack', () => {
+      throw new Error('speech is not available');
+    });
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    act(() => result.current.start());
+    await flush();
+    expect(result.current.error).toBe('Couldn’t start the download. Please try again.');
+    expect(result.current.started).toBe(false);
+    expect(result.current.state?.packs['whisper-small'].state).toBe('missing');
+    expect(result.current.state?.packs['supertonic-3'].state).toBe('missing');
+  });
+
+  it('pauses only the packs that are moving, and applies the reply', async () => {
+    const fake = createFakeBridge();
+    fake.handle('speech:status', () =>
+      speechState({
+        'whisper-small': { state: 'downloading', receivedBytes: 5 },
+        'supertonic-3': readyPack('supertonic-3'),
+      }),
+    );
+    fake.handle('speech:cancelPack', () =>
+      speechState({
+        'whisper-small': {
+          state: 'error',
+          receivedBytes: 5,
+          message: 'The download was cancelled',
+        },
+        'supertonic-3': readyPack('supertonic-3'),
+      }),
+    );
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    act(() => result.current.pause());
+    expect(result.current.paused).toBe(true);
+    await flush();
+    expect(fake.inputsOf('speech:cancelPack')).toEqual([{ pack: 'whisper-small' }]);
+    expect(result.current.state?.packs['whisper-small'].state).toBe('error');
+    expect(result.current.error).toBeNull();
+  });
+
+  it('reports a pause that failed, and a new start clears the pause', async () => {
+    const fake = createFakeBridge();
+    fake.handle('speech:status', () => speechState({ 'whisper-small': { state: 'downloading' } }));
+    fake.handle('speech:cancelPack', () => {
+      throw new Error('nothing to cancel');
+    });
+    const { result } = renderHook(() => useSpeechPacks(fake.bridge, BEST_PACKS));
+    await flush();
+    act(() => result.current.pause());
+    await flush();
+    expect(result.current.error).toBe('Couldn’t pause the download.');
+
+    act(() => result.current.start());
+    expect(result.current.paused).toBe(false);
+    expect(result.current.error).toBeNull();
+    await flush();
+  });
+});
+
 describe('useSettings', () => {
+  it('sends a choice that changes several voice settings as one save, and rolls all of it back', async () => {
+    const fake = createFakeBridge();
+    const { result } = renderHook(() => useSettings(fake.bridge));
+    await flush();
+    act(() => result.current.setVoicePref({ sttEngine: 'offline', ttsEngine: 'system' }));
+    expect(result.current.voice).toMatchObject({ sttEngine: 'offline', ttsEngine: 'system' });
+    expect(fake.inputsOf('settings:update')).toEqual([
+      { voice: { sttEngine: 'offline', ttsEngine: 'system' } },
+    ]);
+    await flush();
+    expect(result.current.voice).toMatchObject({ sttEngine: 'offline', ttsEngine: 'system' });
+
+    fake.handle('settings:update', () => {
+      throw new Error('disk is full');
+    });
+    act(() =>
+      result.current.setVoicePref({ sttEngine: 'whisper', ttsEngine: 'natural', language: 'hi' }),
+    );
+    expect(result.current.voice).toMatchObject({ sttEngine: 'whisper', language: 'hi' });
+    await flush();
+    expect(result.current.voice).toMatchObject({
+      sttEngine: 'offline',
+      ttsEngine: 'system',
+      language: 'auto',
+    });
+    expect(result.current.error).toBe('Couldn’t save that setting. Please try again.');
+  });
+
+  it('reads the language and engines from the settings', async () => {
+    const fake = createFakeBridge();
+    fake.handle('settings:get', () =>
+      settingsView({ voice: { language: 'hi', sttEngine: 'offline', whisperModel: 'base' } }),
+    );
+    const { result } = renderHook(() => useSettings(fake.bridge));
+    await flush();
+    expect(result.current.voice).toMatchObject({
+      language: 'hi',
+      sttEngine: 'offline',
+      whisperModel: 'base',
+      ttsEngine: 'natural',
+    });
+  });
   it('shows the schema defaults until the real settings arrive', async () => {
     const fake = createFakeBridge();
     fake.handle('settings:get', () => ({

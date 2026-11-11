@@ -1,5 +1,6 @@
 import type {
   HotkeyStatusEntry,
+  SpeechPackState,
   UpdateState,
   VoiceModelState,
   WorkerStatus,
@@ -8,12 +9,17 @@ import type { PillTone } from '@renderer/components/forms';
 import { formatBytes } from '@renderer/lib/format';
 import { formatEta, formatSpeed, fractionOf } from './format';
 
+/** Where a download is, in the words every model and pack card shares. */
+export type DownloadPhase = 'missing' | 'partial' | 'downloading' | 'finishing' | 'ready' | 'error';
+
 export interface ModelSummary {
+  phase: DownloadPhase;
   tone: PillTone;
   label: string;
   detail: string;
   /** 0..1 while a download exists (partial or running); null otherwise. */
   fraction: number | null;
+  /** Something is in progress (transfer, checksum check or unpacking). */
   downloading: boolean;
   attempt: string | null;
   /** Friendly status text from the downloader (why it is retrying, ...). */
@@ -43,6 +49,7 @@ export function describeModel(state: VoiceModelState, fallbackTotal: number): Mo
     case 'missing':
       return {
         ...NO_ACTIONS,
+        phase: 'missing',
         tone: 'neutral',
         label: 'Not downloaded',
         detail: `About ${formatBytes(total)}. Downloaded once, then speech recognition works offline.`,
@@ -51,6 +58,7 @@ export function describeModel(state: VoiceModelState, fallbackTotal: number): Mo
     case 'partial':
       return {
         ...NO_ACTIONS,
+        phase: 'partial',
         tone: 'warning',
         label: 'Partly downloaded',
         detail: `${formatBytes(state.receivedBytes)} of ${formatBytes(total)} saved so far.`,
@@ -61,15 +69,10 @@ export function describeModel(state: VoiceModelState, fallbackTotal: number): Mo
     case 'downloading':
       return {
         ...NO_ACTIONS,
+        phase: 'downloading',
         tone: 'info',
         label: 'Downloading',
-        detail: [
-          `${formatBytes(state.receivedBytes)} of ${formatBytes(total)}`,
-          formatSpeed(state.bytesPerSecond),
-          formatEta(state.etaSeconds),
-        ]
-          .filter((part) => part !== '')
-          .join(' \u00b7 '),
+        detail: transferDetail(state, total),
         fraction,
         downloading: true,
         attempt: state.maxAttempts > 1 ? `Attempt ${state.attempt} of ${state.maxAttempts}` : null,
@@ -79,6 +82,7 @@ export function describeModel(state: VoiceModelState, fallbackTotal: number): Mo
     case 'ready':
       return {
         ...NO_ACTIONS,
+        phase: 'ready',
         tone: 'success',
         label: 'Ready',
         detail: `${formatBytes(total)} stored on this PC. Speech recognition works offline.`,
@@ -87,9 +91,113 @@ export function describeModel(state: VoiceModelState, fallbackTotal: number): Mo
     case 'error':
       return {
         ...NO_ACTIONS,
+        phase: 'error',
         tone: 'danger',
         label: 'Download failed',
         detail: 'Nothing was lost: the download resumes where it stopped.',
+        error: state.message ?? 'The download did not finish. Check your connection and try again.',
+        primary: 'retry',
+        canRemove: state.receivedBytes > 0,
+      };
+  }
+}
+
+/** "9.54 MB of 38.1 MB · 1.91 MB/s · about 15 s left" */
+function transferDetail(
+  state: Pick<VoiceModelState, 'receivedBytes' | 'bytesPerSecond' | 'etaSeconds'>,
+  total: number,
+): string {
+  return [
+    `${formatBytes(state.receivedBytes)} of ${formatBytes(total)}`,
+    formatSpeed(state.bytesPerSecond),
+    formatEta(state.etaSeconds),
+  ]
+    .filter((part) => part !== '')
+    .join(' \u00b7 ');
+}
+
+const CANCELLED = /cancel/i;
+
+/**
+ * Turns the state of a speech pack (natural voice, Whisper) into the labels and actions of its
+ * card. A pack has no "partial" state: a cancelled download is reported as an error that says so.
+ */
+export function describePack(state: SpeechPackState, fallbackTotal: number): ModelSummary {
+  const total = state.totalBytes > 0 ? state.totalBytes : fallbackTotal;
+  const fraction = fractionOf(state.receivedBytes, total);
+  const paused = state.state === 'error' && CANCELLED.test(state.message ?? '');
+  if (paused && state.receivedBytes > 0) {
+    return {
+      ...NO_ACTIONS,
+      phase: 'partial',
+      tone: 'warning',
+      label: 'Partly downloaded',
+      detail: `${formatBytes(state.receivedBytes)} of ${formatBytes(total)} saved so far.`,
+      fraction,
+      primary: 'resume',
+      canRemove: true,
+    };
+  }
+  switch (paused ? 'missing' : state.state) {
+    case 'missing':
+      return {
+        ...NO_ACTIONS,
+        phase: 'missing',
+        tone: 'neutral',
+        label: 'Not downloaded',
+        detail: `About ${formatBytes(total)}. Downloaded once, then it works offline.`,
+        primary: 'download',
+      };
+    case 'downloading':
+      return {
+        ...NO_ACTIONS,
+        phase: 'downloading',
+        tone: 'info',
+        label: 'Downloading',
+        detail: transferDetail(state, total),
+        fraction,
+        downloading: true,
+        note: state.message ?? null,
+        canCancel: true,
+      };
+    case 'verifying':
+      return {
+        ...NO_ACTIONS,
+        phase: 'finishing',
+        tone: 'info',
+        label: 'Checking',
+        detail: 'Making sure the download is complete and unmodified.',
+        fraction: 1,
+        downloading: true,
+        note: state.message ?? null,
+      };
+    case 'extracting':
+      return {
+        ...NO_ACTIONS,
+        phase: 'finishing',
+        tone: 'info',
+        label: 'Unpacking',
+        detail: 'Getting the files ready to use. This takes a few seconds.',
+        fraction: 1,
+        downloading: true,
+        note: state.message ?? null,
+      };
+    case 'ready':
+      return {
+        ...NO_ACTIONS,
+        phase: 'ready',
+        tone: 'success',
+        label: 'Ready',
+        detail: `${formatBytes(total)} stored on this PC. Works offline.`,
+        canRemove: true,
+      };
+    case 'error':
+      return {
+        ...NO_ACTIONS,
+        phase: 'error',
+        tone: 'danger',
+        label: 'Download failed',
+        detail: 'Check your connection, then try again.',
         error: state.message ?? 'The download did not finish. Check your connection and try again.',
         primary: 'retry',
         canRemove: state.receivedBytes > 0,

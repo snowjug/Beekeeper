@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
   button,
@@ -13,9 +13,11 @@ import { createFakeBridge, modelState } from './testUtils';
 
 stubCanvas();
 
+/** The "Language & voice" step with the Light quality (the small offline model) chosen. */
 async function openModelScreen(options: RenderOptions = {}) {
   const rendered = renderApp(options);
-  await goTo(rendered.user, 'model');
+  await goTo(rendered.user, 'language');
+  await rendered.user.click(screen.getByRole('radio', { name: 'Light' }));
   return rendered;
 }
 
@@ -29,18 +31,21 @@ const downloading = (receivedBytes: number) =>
     maxAttempts: 4,
   });
 
-describe('voice model screen', () => {
-  it('reads the size and name from the state and never downloads on its own', async () => {
+describe('language & voice screen: the Light (offline model) download', () => {
+  it('saves the Light choice, reads the size and name from the state and never downloads on its own', async () => {
     const { fake } = await openModelScreen();
-    expect(await screen.findByText(/about 39\.3 MB/)).toBeInTheDocument();
-    expect(screen.getByText('Not downloaded yet')).toBeInTheDocument();
     expect(
-      screen.getByText(/English \(US\) speech model, small · 0\.0 MB of 39\.3 MB/),
+      await screen.findByText(/English \(US\) speech model, small · 0\.0 MB of 39\.3 MB/),
     ).toBeInTheDocument();
+    expect(screen.getByText('Not downloaded yet')).toBeInTheDocument();
+    expect(fake.inputsOf('settings:update')).toEqual([
+      { voice: { sttEngine: 'offline', ttsEngine: 'system' } },
+    ]);
     expect(fake.inputsOf('voice:modelStatus')).toHaveLength(1);
     expect(fake.inputsOf('voice:modelEnsure')).toHaveLength(0);
+    expect(fake.inputsOf('speech:ensurePack')).toHaveLength(0);
     expect(button('Download')).toBeInTheDocument();
-    expect(button('Not now')).toBeInTheDocument();
+    expect(button('Skip for now')).toBeInTheDocument();
   });
 
   it('downloads after a click and shows percentage, size, speed, ETA and attempt', async () => {
@@ -133,7 +138,7 @@ describe('voice model screen', () => {
     expect(screen.getByRole('img', { name: 'Voice model ready' })).toBeInTheDocument();
     expect(screen.getByText(/work offline/)).toBeInTheDocument();
     expect(button('Continue')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Not now' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Skip for now' })).toBeNull();
     expect(liveRegion()).toHaveTextContent('Voice model ready.');
   });
 
@@ -154,8 +159,17 @@ describe('voice model screen', () => {
     await user.click(button('Download'));
     act(() => fake.emit('voice:modelProgress', downloading(8_000_000)));
     await user.click(await screen.findByRole('button', { name: 'Continue' }));
-    await heading(/anywhere/i);
+    await heading(/try your microphone/i);
     expect(fake.inputsOf('voice:modelCancel')).toHaveLength(0);
     expect(fake.listenerCount('voice:modelProgress')).toBe(1);
+  });
+
+  it('warns that the offline model understands English only unless English is chosen', async () => {
+    const { user } = await openModelScreen();
+    expect(await screen.findByText(/understands English only/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'English' }));
+    await waitFor(() => expect(screen.queryByText(/understands English only/)).toBeNull());
+    await user.click(screen.getByRole('radio', { name: 'हिन्दी' }));
+    expect(await screen.findByText(/understands English only/)).toBeInTheDocument();
   });
 });

@@ -37,6 +37,8 @@ export interface VoiceOptionsCardProps {
   voice: VoicePrefs;
   onChange: (patch: VoicePrefsPatch) => void;
   modelReady: boolean;
+  /** The small offline model (the wake word's) is being downloaded right now. */
+  modelDownloading: boolean;
   worker: WorkerStatus | null;
   /** Friendly text when saving a preference failed (the switch has already rolled back). */
   saveError: string | null;
@@ -47,10 +49,11 @@ export function VoiceOptionsCard({
   voice,
   onChange,
   modelReady,
+  modelDownloading,
   worker,
   saveError,
 }: VoiceOptionsCardProps) {
-  const hint = describeWakeHint({ wakeWord: voice.wakeWord, modelReady, worker });
+  const hint = describeWakeHint({ wakeWord: voice.wakeWord, modelReady, modelDownloading, worker });
   return (
     <Card index={3} lift={false} icon="mic" title="Voice options" className="text-left">
       <div className="divide-y divide-line px-4 pb-1">
@@ -74,7 +77,7 @@ export function VoiceOptionsCard({
         />
         <OptionRow
           title="Speak replies aloud"
-          description="Beekeeper reads its answers out loud using your installed Windows voices."
+          description="Beekeeper reads its answers out loud, with the natural voice or your Windows voices."
           checked={voice.ttsEnabled}
           onChange={(checked) => onChange({ ttsEnabled: checked })}
         />

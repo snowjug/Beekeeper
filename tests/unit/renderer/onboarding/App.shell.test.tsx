@@ -17,6 +17,7 @@ describe('chrome and navigation', () => {
     expect(screen.getByText(/Your voice-first assistant for Windows/)).toBeInTheDocument();
     for (const label of [
       'Voice & text commands',
+      'English, Hindi & Hinglish',
       'Circle to Search',
       'Private by default, works offline',
     ]) {
@@ -32,10 +33,10 @@ describe('chrome and navigation', () => {
     const { user } = renderApp();
     await heading('Meet Beekeeper');
     await user.click(button('Get started'));
-    const title = await heading(/try your microphone/i);
+    const title = await heading(/language & voice/i);
     await waitFor(() => expect(title).toHaveFocus());
     expect(screen.getByRole('progressbar', { name: 'Step 2 of 5' })).toBeInTheDocument();
-    expect(liveRegion()).toHaveTextContent('Step 2 of 5: Microphone');
+    expect(liveRegion()).toHaveTextContent('Step 2 of 5: Language & voice');
 
     await user.click(button('Back'));
     await heading('Meet Beekeeper');
@@ -51,7 +52,7 @@ describe('chrome and navigation', () => {
     await waitFor(() => expect(orbState()).toBe('idle'), { timeout: 4000 });
 
     await user.click(button('Get started'));
-    await heading(/try your microphone/i);
+    await heading(/language & voice/i);
     await user.click(button('Back'));
     await heading('Meet Beekeeper');
     expect(orbState()).toBe('idle');
@@ -73,9 +74,9 @@ describe('chrome and navigation', () => {
     const footer = screen.getByRole('contentinfo');
     const primary = within(footer).getByRole('button', { name: 'Get started' });
     await user.click(primary);
-    await heading(/try your microphone/i);
+    await heading(/language & voice/i);
     expect(screen.getByRole('contentinfo')).toBe(footer);
-    expect(within(footer).getByRole('button', { name: 'Allow & test microphone' })).toBe(primary);
+    expect(within(footer).getByRole('button', { name: 'Download' })).toBe(primary);
   });
 
   it('walks through all five screens', async () => {
@@ -86,12 +87,13 @@ describe('chrome and navigation', () => {
   });
 
   it('absorbs a double click instead of skipping a screen or pressing the next button', async () => {
-    const { user, openMic } = renderApp({ cooldown: 450 });
+    const { user, fake, openMic } = renderApp({ cooldown: 450 });
     await heading('Meet Beekeeper');
     await user.dblClick(button('Get started'));
-    await heading(/try your microphone/i);
+    await heading(/language & voice/i);
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(screen.getByRole('progressbar', { name: 'Step 2 of 5' })).toBeInTheDocument();
+    expect(fake.inputsOf('speech:ensurePack')).toHaveLength(0);
     expect(openMic).not.toHaveBeenCalled();
   });
 
@@ -99,6 +101,8 @@ describe('chrome and navigation', () => {
     const { user, openMic } = renderApp();
     await heading('Meet Beekeeper');
     await user.keyboard('{Enter}');
+    await heading(/language & voice/i);
+    await user.click(button('Skip for now'));
     await heading(/try your microphone/i);
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toHaveFocus());
     await user.keyboard('{Enter}');
@@ -106,7 +110,7 @@ describe('chrome and navigation', () => {
 
     button('Back').focus();
     await user.keyboard('{Enter}');
-    await heading('Meet Beekeeper');
+    await heading(/language & voice/i);
     expect(openMic).toHaveBeenCalledTimes(1);
   });
 
@@ -142,7 +146,7 @@ describe('chrome and navigation', () => {
       'Couldn’t finish setup just now. Please try again.',
     );
     await user.click(button('Get started'));
-    await heading(/try your microphone/i);
+    await heading(/language & voice/i);
   });
 
   it('follows the theme and paints a solid surface when there is no system backdrop', async () => {
@@ -160,9 +164,11 @@ describe('chrome and navigation', () => {
     await heading('Meet Beekeeper');
     expect(container.firstElementChild).not.toHaveClass('bg-surface-solid');
     expect(fake.listenerCount('voice:modelProgress')).toBe(1);
+    expect(fake.listenerCount('speech:state')).toBe(1);
     unmount();
     for (const channel of [
       'voice:modelProgress',
+      'speech:state',
       'settings:changed',
       'theme:changed',
       'voice:wakeStatus',
@@ -173,7 +179,13 @@ describe('chrome and navigation', () => {
 
   it('survives every read failing and logs them', async () => {
     const fake = createFakeBridge();
-    const reads = ['app:info', 'settings:get', 'hotkeys:status', 'voice:modelStatus'] as const;
+    const reads = [
+      'app:info',
+      'settings:get',
+      'hotkeys:status',
+      'voice:modelStatus',
+      'speech:status',
+    ] as const;
     for (const channel of reads) {
       fake.handle(channel, () => {
         throw new Error(`${channel} is down`);
@@ -182,11 +194,12 @@ describe('chrome and navigation', () => {
     const { user } = renderApp({ fake });
     await heading('Meet Beekeeper');
     await user.click(button('Get started'));
-    await heading(/try your microphone/i);
-    await user.click(button('Skip for now'));
-    await heading(/voice model/i);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t check the voice model');
+    await heading(/language & voice/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t check the downloads');
     expect(button('Download')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'Light' }));
+    expect(await screen.findByText(/Couldn’t check the voice model/)).toBeInTheDocument();
     const logged = fake.inputsOf('app:log').map((input) => (input as { message: string }).message);
     for (const channel of reads) {
       expect(logged.some((message) => message.startsWith(`${channel}:`))).toBe(true);

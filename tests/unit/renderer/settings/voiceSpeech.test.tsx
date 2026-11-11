@@ -48,17 +48,17 @@ describe('Voice section: wake word and voice model', () => {
     const wake = screen.getByRole('switch', { name: WAKE });
     expect(wake).toBeDisabled();
     expect(screen.getByRole('switch', { name: 'Pause wake word on battery saver' })).toBeDisabled();
-    expect(screen.getByText(/The wake word needs the offline voice model/)).toBeInTheDocument();
+    expect(screen.getByText(/The wake word needs the small offline model/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Download voice model' }));
+    await user.click(screen.getByRole('button', { name: 'Download offline model' }));
     expect(h.inputsOf('voice:modelEnsure')).toHaveLength(1);
 
-    const bar = await screen.findByRole('progressbar', { name: 'Voice model download' });
+    const bar = await screen.findByRole('progressbar', { name: 'Offline model download' });
     expect(bar).toHaveAttribute('aria-valuenow', '3');
     expect(screen.getByText(/488 KB\/s/)).toBeInTheDocument();
     expect(screen.getByText(/about 1 min 10 s left/)).toBeInTheDocument();
     expect(screen.getByText('Attempt 1 of 3')).toBeInTheDocument();
-    expect(screen.getByText(/Downloading the voice model/)).toBeInTheDocument();
+    expect(screen.getByText(/Downloading the offline model/)).toBeInTheDocument();
     h.stop();
   });
 
@@ -81,7 +81,7 @@ describe('Voice section: wake word and voice model', () => {
       }),
     );
     expect(
-      await screen.findByRole('progressbar', { name: 'Voice model download' }),
+      await screen.findByRole('progressbar', { name: 'Offline model download' }),
     ).toHaveAttribute('aria-valuenow', '50');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(h.inputsOf('voice:modelCancel')).toHaveLength(1);
@@ -140,7 +140,7 @@ describe('Voice section: wake word and voice model', () => {
       }),
       handlers: { 'voice:modelEnsure': () => MISSING },
     });
-    const card = screen.getByRole('group', { name: 'Voice model' });
+    const card = screen.getByRole('group', { name: 'Offline small (Vosk)' });
     expect(within(card).getByRole('alert')).toHaveTextContent('The checksum did not match.');
 
     await user.click(within(card).getByRole('button', { name: 'Retry' }));
@@ -151,7 +151,7 @@ describe('Voice section: wake word and voice model', () => {
   it('removes the model only after a confirming second press', async () => {
     const user = userEvent.setup();
     const { h } = await mount({ handlers: { 'voice:modelRemove': () => MISSING } });
-    const card = screen.getByRole('group', { name: 'Voice model' });
+    const card = screen.getByRole('group', { name: 'Offline small (Vosk)' });
 
     await user.click(within(card).getByRole('button', { name: 'Remove' }));
     expect(h.inputsOf('voice:modelRemove')).toHaveLength(0);
@@ -161,11 +161,11 @@ describe('Voice section: wake word and voice model', () => {
     h.stop();
   });
 
-  it('shows the ready model with its name and a Remove action', async () => {
+  it('shows the ready model with a Remove action and no progress bar', async () => {
     const { h } = await mount();
-    const card = screen.getByRole('group', { name: 'Voice model' });
-    expect(within(card).getByText('English (US) speech model, small')).toBeInTheDocument();
+    const card = screen.getByRole('group', { name: 'Offline small (Vosk)' });
     expect(within(card).getByText('Ready')).toBeInTheDocument();
+    expect(within(card).getByText(/39\.3 MB stored on this PC/)).toBeInTheDocument();
     expect(within(card).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
     expect(within(card).queryByRole('progressbar')).toBeNull();
     h.stop();
@@ -173,30 +173,54 @@ describe('Voice section: wake word and voice model', () => {
 });
 
 describe('Voice section: recognition engine and toggles', () => {
-  it('Azure Speech engine explains the missing setup and links to the AI section', async () => {
+  it('Azure Speech can only be chosen once it is set up, and points to the AI section until then', async () => {
     const user = userEvent.setup();
     const { h } = await mount();
+    const azure = screen.getByRole('radio', { name: 'Azure Speech' });
+    expect(azure).toBeDisabled();
+    expect(
+      within(screen.getByRole('group', { name: 'Azure Speech' })).getByText('Not set up'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Azure Speech is not set up yet/)).toBeNull();
 
-    await user.click(screen.getByRole('radio', { name: 'Azure Speech' }));
-    expect(h.inputsOf('settings:update')).toEqual([{ voice: { sttEngine: 'azure' } }]);
+    await user.click(screen.getByRole('button', { name: 'Set up in AI settings' }));
+    expect(h.controller.store.getState().section).toBe('ai');
+    expect(h.inputsOf('settings:update')).toHaveLength(0);
+    h.stop();
+  });
+
+  it('explains the missing setup when Azure is the saved engine but is not configured', async () => {
+    const user = userEvent.setup();
+    const { h } = await mount({
+      view: makeView((view) => {
+        view.voice.sttEngine = 'azure';
+      }),
+    });
+    expect(screen.getByRole('radio', { name: 'Azure Speech' })).toBeEnabled();
     expect(await screen.findByText(/Azure Speech is not set up yet/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('Using the offline model until Azure Speech is set up.'),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Open AI settings' }));
     expect(h.controller.store.getState().section).toBe('ai');
     h.stop();
   });
 
-  it('does not nag once Azure Speech is configured', async () => {
+  it('does not nag once Azure Speech is configured, and the radio can be chosen', async () => {
+    const user = userEvent.setup();
     const { h } = await mount({
       view: makeView((view) => {
-        view.voice.sttEngine = 'azure';
         view.ai.useAzureSpeech = true;
         view.ai.speechRegion = 'westeurope';
         view.secrets.speechKey = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u20221a2b';
       }),
     });
     expect(screen.queryByText(/Azure Speech is not set up yet/)).toBeNull();
+    const azure = screen.getByRole('radio', { name: 'Azure Speech' });
+    expect(azure).toBeEnabled();
+    await user.click(azure);
+    expect(h.inputsOf('settings:update')).toEqual([{ voice: { sttEngine: 'azure' } }]);
     h.stop();
   });
 
@@ -217,7 +241,7 @@ describe('Voice section: recognition engine and toggles', () => {
   });
 });
 
-describe('Voice section: spoken replies', () => {
+describe('Voice section: Windows voices', () => {
   class FakeUtterance {
     voice: unknown = null;
     lang = '';
@@ -253,11 +277,16 @@ describe('Voice section: spoken replies', () => {
     { voiceURI: 'katja', name: 'Microsoft Katja', lang: 'de-DE', localService: true },
   ];
 
+  const SYSTEM_VOICES = makeView((view) => {
+    view.voice.ttsEngine = 'system';
+  });
+
   it('lists installed voices, saves the choice and previews it at the chosen speed', async () => {
     const user = userEvent.setup();
     const { speak } = stubSpeech(VOICES);
     const { h } = await mount({
       view: makeView((view) => {
+        view.voice.ttsEngine = 'system';
         view.voice.ttsRate = 1.5;
       }),
     });
@@ -289,7 +318,7 @@ describe('Voice section: spoken replies', () => {
 
   it('the speed slider shows its value and commits once, when released', async () => {
     stubSpeech(VOICES);
-    const { h } = await mount();
+    const { h } = await mount({ view: SYSTEM_VOICES });
     const slider = screen.getByRole('slider', { name: 'Speaking speed' });
     expect(slider).toHaveAttribute('min', '0.5');
     expect(slider).toHaveAttribute('max', '2');
@@ -306,13 +335,13 @@ describe('Voice section: spoken replies', () => {
   });
 
   it('falls back gracefully without system voices', async () => {
-    const { h } = await mount();
+    const { h } = await mount({ view: SYSTEM_VOICES });
     expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Voice' })).toBeDisabled();
     h.stop();
   });
 
-  it('the Azure engine swaps the voice list for an Azure voice name and cannot preview', async () => {
+  it('the Azure engine swaps the voice list for an Azure voice name that cannot be previewed', async () => {
     const user = userEvent.setup();
     stubSpeech(VOICES);
     const { h } = await mount({
@@ -321,7 +350,8 @@ describe('Voice section: spoken replies', () => {
       }),
     });
     expect(screen.queryByRole('combobox', { name: 'Voice' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
+    expect(screen.getByText(/Azure voices can only be heard in the assistant/)).toBeInTheDocument();
 
     const name = screen.getByRole('textbox', { name: 'Azure voice' });
     await user.clear(name);

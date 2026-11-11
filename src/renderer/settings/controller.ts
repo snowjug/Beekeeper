@@ -1,7 +1,14 @@
 import type { Bridge } from '@shared/ipc/bridge';
 import type { InvokeInput } from '@shared/ipc/schemas';
-import type { AiTestResult, HotkeyId, HotkeySetResult, ToastEvent } from '@shared/ipc/types';
+import type {
+  AiTestResult,
+  HotkeyId,
+  HotkeySetResult,
+  SpeechState,
+  ToastEvent,
+} from '@shared/ipc/types';
 import type { SettingsPatch, SettingsView } from '@shared/settings';
+import type { SpeechPackId } from '@shared/speech/packs';
 import { showToast } from '@renderer/components/Toast';
 import { friendlyError, toError } from './lib/errors';
 import type { SettingsPage } from './lib/nav';
@@ -11,8 +18,23 @@ import { createSettingsStore, reconcile, type SettingsState, type SettingsStore 
 export type SettingsBridge = Bridge<'settings'>;
 export type SecretName = InvokeInput<'ai:setKey'>['name'];
 
+const SPEECH_UNAVAILABLE = 'On-device speech is not available right now.';
+
 export function applyTheme(theme: 'light' | 'dark'): void {
   document.documentElement.dataset['theme'] = theme;
+}
+
+/** A pack that is moving or ready no longer needs the message of an earlier refused request. */
+function pruneRefusals(
+  errors: SettingsState['packErrors'],
+  speech: SpeechState,
+): SettingsState['packErrors'] {
+  const kept: SettingsState['packErrors'] = {};
+  for (const [pack, message] of Object.entries(errors) as Array<[SpeechPackId, string]>) {
+    const state = speech.packs[pack]?.state;
+    if (state === 'missing' || state === 'error') kept[pack] = message;
+  }
+  return kept;
 }
 
 /**
@@ -40,6 +62,7 @@ export class SettingsController {
       bridge.on('settings:navigate', ({ section }) => this.navigate(section)),
       bridge.on('updates:state', (updates) => store.setState({ updates })),
       bridge.on('voice:modelProgress', (model) => store.setState({ model })),
+      bridge.on('speech:state', (speech) => this.applySpeech(speech)),
       bridge.on('voice:wakeStatus', (wake) => store.setState({ wake })),
       bridge.on('toast:show', (toast) => this.showMainToast(toast)),
     ];
@@ -58,6 +81,7 @@ export class SettingsController {
     store.setState({ phase: 'loading', loadError: null });
     void this.syncInfo();
     void this.refreshHotkeys();
+    void this.refreshSpeech();
     void bridge
       .invoke('voice:modelStatus')
       .then((model) => store.setState({ model }))
@@ -210,6 +234,50 @@ export class SettingsController {
     if (model) this.store.setState({ model });
   }
 
+  /** Reads which on-device speech packs are installed. Failing leaves a friendly reason in the store. */
+  async refreshSpeech(): Promise<void> {
+    try {
+      this.applySpeech(await this.bridge.invoke('speech:status'));
+    } catch (error) {
+      this.report('speech:status', error);
+      this.store.setState({ speechError: friendlyError(error, SPEECH_UNAVAILABLE) });
+    }
+  }
+
+  /** Starts (or resumes) the download of a speech pack; a refusal is kept per pack for its card. */
+  async ensurePack(pack: SpeechPackId): Promise<void> {
+    this.setPackError(pack, null);
+    try {
+      this.applySpeech(await this.bridge.invoke('speech:ensurePack', { pack }));
+    } catch (error) {
+      this.report('speech:ensurePack', error);
+      this.setPackError(
+        pack,
+        friendlyError(error, 'The download could not be started. Try again in a moment.'),
+      );
+    }
+  }
+
+  async cancelPack(pack: SpeechPackId): Promise<void> {
+    this.setPackError(pack, null);
+    try {
+      this.applySpeech(await this.bridge.invoke('speech:cancelPack', { pack }));
+    } catch (error) {
+      this.report('speech:cancelPack', error);
+      this.setPackError(pack, friendlyError(error, 'The download could not be cancelled.'));
+    }
+  }
+
+  async removePack(pack: SpeechPackId): Promise<void> {
+    this.setPackError(pack, null);
+    try {
+      this.applySpeech(await this.bridge.invoke('speech:removePack', { pack }));
+    } catch (error) {
+      this.report('speech:removePack', error);
+      this.setPackError(pack, friendlyError(error, 'The files could not be removed.'));
+    }
+  }
+
   /** Opens an https link in the default browser (the main process validates it). */
   async openExternal(url: string): Promise<void> {
     const opened = await this.run('Could not open the link', (bridge) =>
@@ -249,6 +317,23 @@ export class SettingsController {
     } catch (error) {
       this.report('app:info', error);
     }
+  }
+
+  private applySpeech(speech: SpeechState): void {
+    this.store.setState((state) => ({
+      speech,
+      speechError: null,
+      packErrors: pruneRefusals(state.packErrors, speech),
+    }));
+  }
+
+  private setPackError(pack: SpeechPackId, message: string | null): void {
+    this.store.setState((state) => {
+      const packErrors = { ...state.packErrors };
+      if (message === null) delete packErrors[pack];
+      else packErrors[pack] = message;
+      return { packErrors };
+    });
   }
 
   /** A confirmed view from the main process (event or response). */

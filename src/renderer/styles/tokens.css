@@ -5,12 +5,13 @@
   --bk-violet: #7c4dff;
   --bk-cyan: #00bcd4;
 
+  /* Nirmala UI is the Windows font with Devanagari glyphs (Hindi); Segoe UI has none. */
   --bk-font:
-    'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system,
-    'Helvetica Neue', Arial, sans-serif;
+    'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Nirmala UI', system-ui,
+    -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --bk-font-display:
-    'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system,
-    'Helvetica Neue', Arial, sans-serif;
+    'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', 'Nirmala UI', system-ui,
+    -apple-system, 'Helvetica Neue', Arial, sans-serif;
 
   --bk-radius-bar: 28px;
   --bk-radius-card: 20px;

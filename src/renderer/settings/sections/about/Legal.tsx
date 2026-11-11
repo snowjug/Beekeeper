@@ -34,7 +34,7 @@ export function ThirdPartyNotices() {
   return (
     <SettingsGroup
       title="Third-party notices"
-      footer={`Plus the ${modelManifest.license}-licensed Vosk speech model and other open-source packages listed in the project's package-lock.json. Thank you to every maintainer.`}
+      footer={`Plus the ${modelManifest.license}-licensed Vosk speech model, the downloadable Whisper and natural voice models, and other open-source packages listed in the project's package-lock.json. Thank you to every maintainer.`}
     >
       <ul className="divide-y divide-line">
         {THIRD_PARTY_NOTICES.map((notice) => (

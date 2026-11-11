@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { button, goTo, heading, renderApp, stubCanvas, type RenderOptions } from './appHarness';
+import { goTo, renderApp, stubCanvas, type RenderOptions } from './appHarness';
 import { createFakeBridge, modelState, settingsView } from './testUtils';
 
 stubCanvas();
@@ -82,7 +82,14 @@ describe('hotkeys and wake word screen', () => {
     expect(switchOf('Speak replies aloud')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByText(/nothing is recorded or sent anywhere/)).toBeInTheDocument();
     expect(screen.getByText(/a tray indicator shows when the mic is active/)).toBeInTheDocument();
-    expect(screen.getByText(/Needs the voice model/)).toBeInTheDocument();
+    expect(screen.getByText(/Needs the small offline model/)).toBeInTheDocument();
+  });
+
+  it('mentions the screenshot and dictation shortcuts', async () => {
+    await openHotkeysScreen();
+    expect(screen.getByText('Alt+Shift+S')).toBeInTheDocument();
+    expect(screen.getByText('Alt+Shift+D')).toBeInTheDocument();
+    expect(screen.getByText(/takes a\s+screenshot/)).toBeInTheDocument();
   });
 
   it.each([
@@ -97,8 +104,20 @@ describe('hotkeys and wake word screen', () => {
     await waitFor(() => expect(switchOf(name)).toHaveAttribute('aria-checked', String(expected)));
   });
 
-  it('accepts the wake word before the model is ready and says it starts later', async () => {
+  it('accepts the wake word before the offline model exists and says where to get it', async () => {
     const { user } = await openHotkeysScreen();
+    await user.click(switchOf('Hey Beekeeper'));
+    expect(
+      await screen.findByText(/Saved\. It needs the small offline model.*Settings > Voice/),
+    ).toBeInTheDocument();
+  });
+
+  it('says the wake word starts later while the offline model is downloading', async () => {
+    const fake = createFakeBridge();
+    fake.handle('voice:modelStatus', () =>
+      modelState({ state: 'downloading', receivedBytes: 1_000_000 }),
+    );
+    const { user } = await openHotkeysScreen({ fake });
     await user.click(switchOf('Hey Beekeeper'));
     expect(
       await screen.findByText('Saved. It starts listening as soon as the voice model is ready.'),
@@ -110,13 +129,7 @@ describe('hotkeys and wake word screen', () => {
     fake.handle('voice:modelStatus', () => modelState({ state: 'ready' }));
     fake.handle('settings:get', () => settingsView({ voice: { wakeWord: true } }));
     const { user } = renderApp({ fake });
-    await heading('Meet Beekeeper');
-    await user.click(button('Get started'));
-    await heading(/try your microphone/i);
-    await user.click(button('Skip for now'));
-    await heading(/voice model/i);
-    await user.click(button('Continue'));
-    await heading(/anywhere/i);
+    await goTo(user, 'hotkeys');
     expect(switchOf('Hey Beekeeper')).toHaveAttribute('aria-checked', 'true');
     act(() => fake.emit('voice:wakeStatus', { state: 'armed' }));
     expect(await screen.findByText('Listening for “Hey Beekeeper”.')).toBeInTheDocument();

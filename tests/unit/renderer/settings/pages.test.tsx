@@ -40,7 +40,10 @@ describe('Privacy section', () => {
       'Weather',
       'Dictionary',
       'Voice model download',
+      'Natural voice download',
+      'Whisper speech models',
       'Azure (optional)',
+      'ElevenLabs (optional)',
       'Update check',
     ]) {
       expect(within(network).getByText(name)).toBeInTheDocument();
@@ -49,6 +52,21 @@ describe('Privacy section', () => {
     expect(within(network).getByText(/dictionaryapi\.dev/)).toBeInTheDocument();
     expect(within(network).getByText(/ccoreilly\.github\.io/)).toBeInTheDocument();
     expect(within(network).getByText(/GitHub Releases/)).toBeInTheDocument();
+    h.stop();
+  });
+
+  it('names the hosts of the speech downloads and what ElevenLabs receives', async () => {
+    const { h } = await mount(<PrivacySection />, { handlers: { 'assistant:history': history } });
+    const network = screen.getByRole('group', { name: 'What can use the internet' });
+    expect(
+      within(network).getByText(/Only when you download the natural voice.*from github\.com/),
+    ).toBeInTheDocument();
+    expect(
+      within(network).getByText(/Only when you download Whisper.*from huggingface\.co/),
+    ).toBeInTheDocument();
+    expect(
+      within(network).getByText(/the text of Beekeeper's replies is sent to api\.elevenlabs\.io/),
+    ).toBeInTheDocument();
     h.stop();
   });
 
@@ -204,7 +222,26 @@ describe('About section', () => {
     const notices = screen.getByRole('group', { name: 'Third-party notices' });
     expect(within(notices).getAllByRole('listitem')).toHaveLength(THIRD_PARTY_NOTICES.length);
     expect(within(notices).getByText('Vosk (vosk-browser)')).toBeInTheDocument();
-    expect(within(notices).getAllByText('Apache-2.0')).toHaveLength(3);
+    expect(within(notices).getAllByText('Apache-2.0')).toHaveLength(
+      THIRD_PARTY_NOTICES.filter((notice) => notice.license === 'Apache-2.0').length,
+    );
+    h.stop();
+  });
+
+  it('credits the speech models and the optional online voice with their licenses', async () => {
+    const { h } = await mount(<AboutSection />);
+    const notices = screen.getByRole('group', { name: 'Third-party notices' });
+    const row = (name: string) => within(notices).getByText(name).closest('li') as HTMLElement;
+
+    expect(
+      within(row('Supertonic 3 (Supertone Inc.)')).getByText('OpenRAIL-M'),
+    ).toBeInTheDocument();
+    expect(
+      within(row('Supertonic sample code (Supertone Inc.)')).getByText('MIT'),
+    ).toBeInTheDocument();
+    expect(within(row('OpenAI Whisper')).getByText('MIT')).toBeInTheDocument();
+    expect(within(row('sherpa-onnx (k2-fsa)')).getByText('Apache-2.0')).toBeInTheDocument();
+    expect(within(row('ElevenLabs')).getByText('Online service')).toBeInTheDocument();
     h.stop();
   });
 

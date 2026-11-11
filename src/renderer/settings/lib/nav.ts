@@ -27,7 +27,7 @@ export const SECTIONS: readonly SectionMeta[] = [
     id: 'voice',
     label: 'Voice',
     title: 'Voice',
-    description: 'Microphone, speech recognition, wake word and spoken replies.',
+    description: 'Language, speech recognition, the assistant’s voice and the wake word.',
     icon: 'mic',
   },
   {

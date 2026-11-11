@@ -9,9 +9,13 @@ export interface VoicePrefs {
   wakeWord: boolean;
   pushToTalk: boolean;
   ttsEnabled: boolean;
+  language: SettingsView['voice']['language'];
+  sttEngine: SettingsView['voice']['sttEngine'];
+  ttsEngine: SettingsView['voice']['ttsEngine'];
+  whisperModel: SettingsView['voice']['whisperModel'];
 }
 
-export type VoicePrefsPatch = Partial<Pick<VoicePrefs, 'wakeWord' | 'pushToTalk' | 'ttsEnabled'>>;
+export type VoicePrefsPatch = Partial<Omit<VoicePrefs, 'micDeviceId'>>;
 
 /** Same defaults as the settings schema; shown until (or if) the real values cannot be read. */
 export const DEFAULT_VOICE_PREFS: VoicePrefs = {
@@ -19,6 +23,10 @@ export const DEFAULT_VOICE_PREFS: VoicePrefs = {
   wakeWord: false,
   pushToTalk: false,
   ttsEnabled: true,
+  language: 'auto',
+  sttEngine: 'whisper',
+  ttsEngine: 'natural',
+  whisperModel: 'small',
 };
 
 const SAVE_ERROR = 'Couldn’t save that setting. Please try again.';
@@ -28,7 +36,7 @@ export interface SettingsController {
   hotkeys: Record<HotkeyId, string>;
   /** Friendly text of the last failed save; cleared by the next one. */
   error: string | null;
-  /** Applies a voice preference at once; it rolls back (with `error` set) if saving fails. */
+  /** Applies voice preferences at once (one save); they roll back (with `error` set) if it fails. */
   setVoicePref: (patch: VoicePrefsPatch) => void;
 }
 
@@ -36,6 +44,19 @@ function withoutKeys(patch: VoicePrefsPatch, remove: VoicePrefsPatch): VoicePref
   const next = { ...patch };
   for (const key of Object.keys(remove) as Array<keyof VoicePrefsPatch>) delete next[key];
   return next;
+}
+
+function prefsOf(voice: SettingsView['voice']): VoicePrefs {
+  return {
+    micDeviceId: voice.micDeviceId,
+    wakeWord: voice.wakeWord,
+    pushToTalk: voice.pushToTalk,
+    ttsEnabled: voice.ttsEnabled,
+    language: voice.language,
+    sttEngine: voice.sttEngine,
+    ttsEngine: voice.ttsEngine,
+    whisperModel: voice.whisperModel,
+  };
 }
 
 /** Live view of the settings this window shows (voice preferences and hotkeys). */
@@ -79,13 +100,8 @@ export function useSettings(bridge: OnboardingBridge): SettingsController {
     [bridge],
   );
 
-  const saved = settings?.voice;
-  const voice: VoicePrefs = {
-    micDeviceId: saved?.micDeviceId ?? DEFAULT_VOICE_PREFS.micDeviceId,
-    wakeWord: pending.wakeWord ?? saved?.wakeWord ?? DEFAULT_VOICE_PREFS.wakeWord,
-    pushToTalk: pending.pushToTalk ?? saved?.pushToTalk ?? DEFAULT_VOICE_PREFS.pushToTalk,
-    ttsEnabled: pending.ttsEnabled ?? saved?.ttsEnabled ?? DEFAULT_VOICE_PREFS.ttsEnabled,
-  };
+  const saved = settings ? prefsOf(settings.voice) : DEFAULT_VOICE_PREFS;
+  const voice: VoicePrefs = { ...saved, ...pending };
   const hotkeys: Record<HotkeyId, string> = {
     assistant: settings?.hotkeys.assistant ?? DEFAULT_HOTKEYS.assistant,
     circle: settings?.hotkeys.circle ?? DEFAULT_HOTKEYS.circle,

@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import type { Settings, SettingsView } from '@shared/settings';
 import type { SettingsController } from './controller';
-import { patchOf, type PatchSection } from './lib/patch';
+import { changesOf, patchOf, type PatchSection } from './lib/patch';
 import type { SettingsState } from './store';
 
 const ControllerContext = createContext<SettingsController | null>(null);
@@ -41,6 +41,21 @@ export function useSetter<S extends PatchSection>(
   return useCallback(
     <K extends keyof Settings[S]>(key: K, value: Settings[S][K]): void => {
       void controller.update(patchOf(section, key, value));
+    },
+    [controller, section],
+  );
+}
+
+/** Updater for a choice that changes several keys of one section at once (one patch, changed keys only). */
+export function useSectionUpdater<S extends PatchSection>(
+  section: S,
+): (values: Partial<Settings[S]>) => void {
+  const controller = useController();
+  return useCallback(
+    (values: Partial<Settings[S]>): void => {
+      const view = controller.store.getState().view;
+      const patch = view === null ? null : changesOf(view, section, values);
+      if (patch) void controller.update(patch);
     },
     [controller, section],
   );

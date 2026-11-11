@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { button, heading, renderApp, stubCanvas } from './appHarness';
+import { button, goTo, heading, renderApp, stubCanvas } from './appHarness';
 
 vi.mock('@renderer/motion/useMotionPrefs', () => ({
   useReduceMotion: () => true,
@@ -24,6 +24,8 @@ describe('reduced motion', () => {
     const { user, container } = renderApp();
     await heading('Meet Beekeeper');
     await user.click(button('Get started'));
+    await heading(/language & voice/i);
+    await user.click(button('Skip for now'));
     await heading(/try your microphone/i);
     expect(screen.getByRole('meter', { name: 'Input level' })).toBeInTheDocument();
     expect(container.querySelector('canvas')).toBeNull();
@@ -36,28 +38,14 @@ describe('reduced motion', () => {
 
   it('shows static key caps without the pressing loop', async () => {
     const { user, container } = renderApp();
-    await heading('Meet Beekeeper');
-    await user.click(button('Get started'));
-    await heading(/try your microphone/i);
-    await user.click(button('Skip for now'));
-    await heading(/voice model/i);
-    await user.click(button('Not now'));
-    await heading(/anywhere/i);
+    await goTo(user, 'hotkeys');
     expect(container.querySelectorAll('kbd').length).toBeGreaterThanOrEqual(6);
     expect(container.querySelector('.ob-press')).toBeNull();
   });
 
   it('replaces the confetti with a static sparkle', async () => {
     const { user, container } = renderApp();
-    await heading('Meet Beekeeper');
-    await user.click(button('Get started'));
-    await heading(/try your microphone/i);
-    await user.click(button('Skip for now'));
-    await heading(/voice model/i);
-    await user.click(button('Not now'));
-    await heading(/anywhere/i);
-    await user.click(button('Continue'));
-    await heading(/all set/i);
+    await goTo(user, 'done');
     expect(document.querySelector('[data-celebration="confetti"]')).toBeNull();
     expect(document.querySelector('canvas')).toBeNull();
     await waitFor(() =>

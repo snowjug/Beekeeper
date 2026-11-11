@@ -16,6 +16,79 @@ async function openSettings(app: ElectronApplication, section?: string) {
 }
 
 test.describe('settings', () => {
+  test('the Voice page saves the language, recognition engine and voice engine', async () => {
+    const launched = await launchApp();
+    try {
+      const page = await openSettings(launched.app, 'voice');
+      await expect(page.getByRole('heading', { name: 'Voice', level: 1 })).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Auto (English + Hindi)' })).toBeChecked();
+      await expect(page.getByRole('radio', { name: 'Whisper accurate' })).toBeChecked();
+      await expect(page.getByRole('radio', { name: 'Natural voice' })).toBeChecked();
+
+      await page.getByRole('radio', { name: 'Hindi', exact: true }).click();
+      await page.getByText('Whisper fast', { exact: true }).click();
+      await page.getByRole('radio', { name: 'Windows voices' }).click();
+      await expect(page.getByRole('group', { name: 'Windows voices' })).toBeVisible();
+
+      await expect
+        .poll(() =>
+          launched.app.evaluate(() => {
+            const hooks = (
+              globalThis as unknown as {
+                __beekeeper: {
+                  ctx: {
+                    settings: {
+                      get: () => {
+                        voice: { language: string; whisperModel: string; ttsEngine: string };
+                      };
+                    };
+                  };
+                };
+              }
+            ).__beekeeper;
+            const { language, whisperModel, ttsEngine } = hooks.ctx.settings.get().voice;
+            return `${language}/${whisperModel}/${ttsEngine}`;
+          }),
+        )
+        .toBe('hi/base/system');
+    } finally {
+      await launched.close();
+    }
+  });
+
+  test('the Capture Studio and Dictation pages save their settings', async () => {
+    const launched = await launchApp();
+    try {
+      const read = (section: 'capture' | 'dictation', key: string) =>
+        launched.app.evaluate(
+          (_electron, [name, field]: [string, string]) => {
+            const hooks = (
+              globalThis as unknown as {
+                __beekeeper: {
+                  ctx: { settings: { get: () => Record<string, Record<string, unknown>> } };
+                };
+              }
+            ).__beekeeper;
+            return hooks.ctx.settings.get()[name]?.[field];
+          },
+          [section, key] as [string, string],
+        );
+
+      const page = await openSettings(launched.app, 'capture');
+      await expect(page.getByRole('heading', { name: 'Capture Studio', level: 1 })).toBeVisible();
+      await page.getByRole('switch', { name: 'Copy automatically' }).click();
+      await expect.poll(() => read('capture', 'autoCopy')).toBe(true);
+      await expect(page.getByRole('button', { name: 'Take a screenshot now' })).toBeVisible();
+
+      await openSettings(launched.app, 'dictation');
+      await expect(page.getByRole('heading', { name: 'Dictation', level: 1 })).toBeVisible();
+      await page.getByRole('switch', { name: 'Spoken punctuation' }).click();
+      await expect.poll(() => read('dictation', 'spokenPunctuation')).toBe(false);
+    } finally {
+      await launched.close();
+    }
+  });
+
   test('changes apply instantly and persist across a restart', async () => {
     const first = await launchApp();
     const userData = first.userData;
@@ -73,6 +146,8 @@ test.describe('settings', () => {
       const page = await openSettings(launched.app, 'hotkeys');
       await expect(page.getByRole('heading', { name: 'Hotkeys', level: 1 })).toBeVisible();
       await expect(page.getByText('Ctrl+Shift+Space').first()).toBeVisible();
+      // Assistant, Circle to Search, Capture Studio and Dictation each have their own row.
+      await expect(page.getByRole('button', { name: 'Change', exact: true })).toHaveCount(4);
 
       // Assign the Circle hotkey to the assistant's combination: must be refused.
       const result = await page.evaluate(async () => {

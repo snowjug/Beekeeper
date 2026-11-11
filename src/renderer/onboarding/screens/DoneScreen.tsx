@@ -6,6 +6,7 @@ import { Orb } from '@renderer/components/Orb';
 import type { OrbState } from '@renderer/components/orbMath';
 import { useReduceMotion } from '@renderer/motion/useMotionPrefs';
 import { staggerContainer, staggerItem } from '@renderer/motion/variants';
+import type { HotkeyId } from '@shared/ipc/types';
 import { ConfettiCanvas } from '../components/ConfettiCanvas';
 import { Pill } from '../components/Pill';
 import { Reveal, ScreenFrame } from '../components/ScreenFrame';
@@ -15,17 +16,17 @@ import type { SummaryItem, SummaryTone } from '../summary';
 const HAPPY_PULSES_MS = [0, 360, 780, 1280, 1900];
 const SETTLE_MS = 2800;
 
-const TRY_THESE: ReadonlyArray<{ icon: IconName; label: string }> = [
-  { icon: 'weather', label: "What's the weather?" },
-  { icon: 'app', label: 'Open Notepad' },
-  { icon: 'circle', label: 'Circle to Search' },
-];
-
 const TONE_ICON: Record<SummaryTone, { icon: IconName; color: string }> = {
   good: { icon: 'check', color: 'text-success' },
   neutral: { icon: 'minus', color: 'text-fg-faint' },
   warn: { icon: 'warning', color: 'text-accent-text' },
 };
+
+const TRY_THESE: ReadonlyArray<{ icon: IconName; label: string }> = [
+  { icon: 'weather', label: "What's the weather?" },
+  { icon: 'app', label: 'Open Notepad' },
+  { icon: 'circle', label: 'Circle to Search' },
+];
 
 /** The orb pulses like laughter in time with the confetti, then settles into the idle dots. */
 function HappyOrb() {
@@ -61,9 +62,11 @@ function HappyOrb() {
 export interface DoneScreenProps {
   direction: Direction;
   summary: SummaryItem[];
+  /** The configured shortcuts, shown next to the things to try. */
+  hotkeys: Record<HotkeyId, string>;
 }
 
-export function DoneScreen({ direction, summary }: DoneScreenProps) {
+export function DoneScreen({ direction, summary, hotkeys }: DoneScreenProps) {
   const reduceMotion = useReduceMotion();
   return (
     <ScreenFrame
@@ -76,10 +79,10 @@ export function DoneScreen({ direction, summary }: DoneScreenProps) {
       }
       description="Here’s how things stand. Everything can be changed later in Settings."
     >
-      <Card index={1} lift={false} className="mt-5 w-full max-w-[560px] text-left">
+      <Card index={1} lift={false} className="mt-4 w-full max-w-[560px] text-left">
         <ul aria-label="Setup summary" className="divide-y divide-line px-4">
           {summary.map((item) => (
-            <li key={item.id} className="flex items-center gap-3 py-2.5">
+            <li key={item.id} className="flex items-center gap-3 py-2">
               <span className={TONE_ICON[item.tone].color}>
                 <Icon name={TONE_ICON[item.tone].icon} size={18} />
               </span>
@@ -90,8 +93,8 @@ export function DoneScreen({ direction, summary }: DoneScreenProps) {
         </ul>
       </Card>
 
-      <Reveal className="mt-5">
-        <h2 className="mb-2.5 text-[12px] font-semibold tracking-wide text-fg-muted uppercase">
+      <Reveal className="mt-4">
+        <h2 className="mb-2 text-[12px] font-semibold tracking-wide text-fg-muted uppercase">
           Try asking
         </h2>
       </Reveal>
@@ -106,6 +109,12 @@ export function DoneScreen({ direction, summary }: DoneScreenProps) {
           </motion.li>
         ))}
       </motion.ul>
+      <Reveal className="mt-3">
+        <p className="text-[13px] text-fg-muted">
+          Also: <span className="font-semibold text-fg">{hotkeys.capture}</span> takes a screenshot,{' '}
+          <span className="font-semibold text-fg">{hotkeys.dictation}</span> dictates into any app.
+        </p>
+      </Reveal>
 
       {reduceMotion ? null : <ConfettiCanvas />}
     </ScreenFrame>

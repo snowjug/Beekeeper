@@ -1,8 +1,11 @@
-/** The five onboarding screens (spec 4.6) and the pure state machine that moves between them. */
+/**
+ * The five onboarding screens (spec 4.6; v1.1 turned the voice-model screen into "Language & voice")
+ * and the pure state machine that moves between them.
+ */
 export const STEPS = [
   { id: 'welcome', title: 'Welcome' },
+  { id: 'language', title: 'Language & voice' },
   { id: 'microphone', title: 'Microphone' },
-  { id: 'model', title: 'Voice model' },
   { id: 'hotkeys', title: 'Hotkeys & wake word' },
   { id: 'done', title: 'All set' },
 ] as const;

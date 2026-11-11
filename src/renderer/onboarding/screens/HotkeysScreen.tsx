@@ -15,6 +15,8 @@ export interface HotkeysScreenProps {
   onVoicePref: (patch: VoicePrefsPatch) => void;
   saveError: string | null;
   modelReady: boolean;
+  /** The small offline model (the wake word's) is being downloaded right now. */
+  modelDownloading: boolean;
   worker: WorkerStatus | null;
 }
 
@@ -26,6 +28,7 @@ export function HotkeysScreen({
   onVoicePref,
   saveError,
   modelReady,
+  modelDownloading,
   worker,
 }: HotkeysScreenProps) {
   return (
@@ -57,11 +60,17 @@ export function HotkeysScreen({
             accelerator={status?.circle.accelerator ?? hotkeys.circle}
             status={status?.circle}
           />
+          <p className="px-1 text-[13px] leading-snug text-fg-muted">
+            Also: <span className="font-semibold text-fg">{hotkeys.capture}</span> takes a
+            screenshot and <span className="font-semibold text-fg">{hotkeys.dictation}</span> types
+            what you say, in any app.
+          </p>
         </div>
         <VoiceOptionsCard
           voice={voice}
           onChange={onVoicePref}
           modelReady={modelReady}
+          modelDownloading={modelDownloading}
           worker={worker}
           saveError={saveError}
         />

@@ -1,125 +1,138 @@
-import { Button } from '@renderer/components/Button';
-import {
-  Segmented,
-  SettingRow,
-  SettingsGroup,
-  StatusPill,
-  ToggleRow,
-  type SegmentedOption,
-} from '@renderer/components/forms';
-import { formatBytes } from '@renderer/lib/format';
+import { useMemo } from 'react';
+import { SettingsGroup, StatusPill } from '@renderer/components/forms';
 import { modelManifest } from '@shared/models';
-import { useController, useSettingsStore, useSetter, useView } from '../../context';
-import { describeModel, describeWake } from '../../lib/describe';
-import { formatPercent } from '../../lib/format';
+import { SPEECH_PACKS, whisperPackFor } from '@shared/speech/packs';
+import { useController, useSectionUpdater, useSettingsStore, useView } from '../../context';
+import { speechConfigured } from '../../lib/azure';
+import { describeModel } from '../../lib/describe';
+import { describeSttFallback, resolveFor } from '../../lib/engines';
+import { ChoiceRow } from '../../ui/ChoiceRow';
+import { DownloadRow } from '../../ui/DownloadRow';
 import { InlineNotice } from '../../ui/InlineNotice';
+import { LinkButton } from '../../ui/LinkButton';
 import { AzureSpeechHint } from './AzureSpeechHint';
+import { PackRow } from './PackRow';
 
-const ENGINES: readonly SegmentedOption<'offline' | 'azure'>[] = [
-  { value: 'offline', label: 'Offline (Vosk)' },
-  { value: 'azure', label: 'Azure Speech' },
-];
+const GROUP = 'stt-engine';
 
-const MODEL_ACTION = {
-  download: 'Download voice model',
-  resume: 'Resume download',
-  retry: 'Retry download',
-} as const;
+const RECOMMENDED = (
+  <StatusPill tone="info" icon="sparkle">
+    Recommended
+  </StatusPill>
+);
 
-/** Wake word needs the offline model: explain why the switch is locked and offer the download. */
-function ModelRequired() {
-  const controller = useController();
-  const model = useSettingsStore((state) => state.model);
-  if (model === null || model.state === 'ready') return null;
-  const summary = describeModel(model, modelManifest.sizeBytes);
-
-  if (summary.downloading) {
-    return (
-      <InlineNotice live>
-        Downloading the voice model... {formatPercent(summary.fraction ?? 0)}
-      </InlineNotice>
-    );
-  }
+function WhisperRow({ model }: { model: 'small' | 'base' }) {
+  const { voice } = useView();
+  const update = useSectionUpdater('voice');
+  const pack = whisperPackFor(model);
   return (
-    <InlineNotice
-      tone="warning"
-      action={
-        summary.primary ? (
-          <Button
-            size="sm"
-            variant="primary"
-            icon="download"
-            onClick={() => void controller.ensureModel()}
-          >
-            {MODEL_ACTION[summary.primary]}
-          </Button>
-        ) : undefined
-      }
-    >
-      The wake word needs the offline voice model ({formatBytes(modelManifest.sizeBytes)}). Download
-      it once to turn it on.
-    </InlineNotice>
+    <PackRow
+      pack={pack}
+      title={model === 'small' ? 'Whisper accurate' : 'Whisper fast'}
+      description={SPEECH_PACKS[pack].description}
+      badge={model === 'small' ? RECOMMENDED : undefined}
+      choice={{
+        group: GROUP,
+        value: pack,
+        selected: voice.sttEngine === 'whisper' && voice.whisperModel === model,
+        onSelect: () => update({ sttEngine: 'whisper', whisperModel: model }),
+      }}
+    />
   );
 }
 
+/** The small English Vosk model: also what the wake word listens with. */
+function OfflineRow() {
+  const controller = useController();
+  const { voice } = useView();
+  const update = useSectionUpdater('voice');
+  const model = useSettingsStore((state) => state.model);
+  const summary = useMemo(
+    () => (model ? describeModel(model, modelManifest.sizeBytes) : null),
+    [model],
+  );
+  return (
+    <DownloadRow
+      title="Offline small (Vosk)"
+      description="Light and quick, for clear English only. Also powers the “Hey Beekeeper” wake word."
+      choice={{
+        group: GROUP,
+        value: 'offline',
+        selected: voice.sttEngine === 'offline',
+        onSelect: () => update({ sttEngine: 'offline' }),
+      }}
+      summary={summary}
+      subject="Offline model"
+      onDownload={() => controller.ensureModel()}
+      onCancel={() => controller.cancelModel()}
+      onRemove={() => controller.removeModel()}
+    />
+  );
+}
+
+function AzureRow() {
+  const controller = useController();
+  const view = useView();
+  const update = useSectionUpdater('voice');
+  const selected = view.voice.sttEngine === 'azure';
+  const configured = speechConfigured(view);
+  return (
+    <ChoiceRow
+      title="Azure Speech"
+      description="Cloud recognition from your own Azure Speech resource. Your voice is sent to Azure."
+      status={
+        <StatusPill tone={configured ? 'success' : 'neutral'}>
+          {configured ? 'Set up' : 'Not set up'}
+        </StatusPill>
+      }
+      choice={{
+        group: GROUP,
+        value: 'azure',
+        selected,
+        disabled: !configured && !selected,
+        onSelect: () => update({ sttEngine: 'azure' }),
+      }}
+      actions={
+        configured ? undefined : (
+          <LinkButton icon="chevron-right" onClick={() => controller.navigate('ai')}>
+            Set up in AI settings
+          </LinkButton>
+        )
+      }
+    >
+      {selected && !configured ? <AzureSpeechHint /> : null}
+    </ChoiceRow>
+  );
+}
+
+/** Which recogniser listens: pick a card, download what it needs, and see what is used meanwhile. */
 export function RecognitionGroup() {
   const view = useView();
-  const { voice } = view;
-  const setVoice = useSetter('voice');
+  const speech = useSettingsStore((state) => state.speech);
   const model = useSettingsStore((state) => state.model);
-  const wake = useSettingsStore((state) => state.wake);
-  const wakeSummary = describeWake(wake, voice.wakeWord);
-  const modelReady = model?.state === 'ready';
-  const needsModel = model !== null && !modelReady;
-  const wakeDetail = wakeSummary?.detail ?? null;
+  const note = describeSttFallback(view, resolveFor(view, speech, model), speech, model);
 
   return (
-    <SettingsGroup title="Speech recognition">
-      <SettingRow
-        label="Recognition engine"
-        description="Offline keeps your voice on this PC. Azure Speech sends it to Azure for recognition."
-        below={voice.sttEngine === 'azure' ? <AzureSpeechHint /> : undefined}
+    <SettingsGroup
+      title="Speech recognition"
+      footer="Whisper and the offline model run on this PC: your voice never leaves it unless you choose Azure Speech."
+    >
+      <div
+        role="radiogroup"
+        aria-label="Recognition engine"
+        className={`divide-y divide-line overflow-hidden rounded-t-card ${note ? '' : 'rounded-b-card'}`}
       >
-        <Segmented
-          label="Recognition engine"
-          value={voice.sttEngine}
-          options={ENGINES}
-          onChange={(engine) => setVoice('sttEngine', engine)}
-        />
-      </SettingRow>
-      <ToggleRow
-        label="Push-to-talk"
-        description={`Hold ${view.hotkeys.assistant} to talk and release it to send. Off: press once and Beekeeper stops when you pause.`}
-        checked={voice.pushToTalk}
-        onChange={(on) => setVoice('pushToTalk', on)}
-      />
-      <ToggleRow
-        label={'Wake word \u201cHey Beekeeper\u201d'}
-        description="Say it to start listening hands-free. Off by default; it runs offline and keeps the microphone open while armed."
-        checked={voice.wakeWord}
-        disabled={!modelReady && !voice.wakeWord}
-        onChange={(on) => setVoice('wakeWord', on)}
-        status={
-          wakeSummary ? <StatusPill tone={wakeSummary.tone}>{wakeSummary.label}</StatusPill> : null
-        }
-        below={
-          needsModel || wakeDetail ? (
-            <div className="space-y-2.5">
-              <ModelRequired />
-              {wakeDetail ? (
-                <p className="text-[12.5px] leading-[18px] text-fg-muted">{wakeDetail}</p>
-              ) : null}
-            </div>
-          ) : undefined
-        }
-      />
-      <ToggleRow
-        label="Pause wake word on battery saver"
-        description="Stops listening for the wake word while Windows battery saver is on, to save power."
-        checked={voice.wakeWordPauseOnBatterySaver}
-        disabled={!voice.wakeWord}
-        onChange={(on) => setVoice('wakeWordPauseOnBatterySaver', on)}
-      />
+        {' '}
+        <WhisperRow model="small" />
+        <WhisperRow model="base" />
+        <OfflineRow />
+        <AzureRow />
+      </div>
+      {note ? (
+        <div className="px-4 py-3">
+          <InlineNotice tone={note.tone}>{note.text}</InlineNotice>
+        </div>
+      ) : null}
     </SettingsGroup>
   );
 }

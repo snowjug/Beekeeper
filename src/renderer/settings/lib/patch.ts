@@ -44,6 +44,28 @@ export function patchOf<S extends PatchSection, K extends keyof Settings[S]>(
   return patch;
 }
 
+/**
+ * One patch for several keys of a section, leaving out keys that already hold the value (so a
+ * choice that changes two settings at once still only sends what really changes). Null when
+ * nothing changes.
+ */
+export function changesOf<S extends PatchSection>(
+  view: SettingsView,
+  section: S,
+  values: Partial<Settings[S]>,
+): SettingsPatch | null {
+  const current: Record<string, unknown> = view[section];
+  const changed: Partial<Settings[S]> = {};
+  for (const key of Object.keys(values) as Array<keyof Settings[S] & string>) {
+    const value = values[key];
+    if (value !== undefined && !deepEqual(current[key], value)) changed[key] = value;
+  }
+  if (Object.keys(changed).length === 0) return null;
+  const patch: SettingsPatch = {};
+  assignPatch(patch, section, changed);
+  return patch;
+}
+
 /** Returns a copy of `view` with the patch applied (sections are one level deep, like in main). */
 export function applyPatch(view: SettingsView, patch: SettingsPatch): SettingsView {
   const next: SettingsView = { ...view };

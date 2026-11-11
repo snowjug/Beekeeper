@@ -109,15 +109,16 @@ describe('General section', () => {
     h.stop();
   });
 
-  it('keeps the language visible but fixed, and replays the welcome tour', async () => {
+  it('keeps the display language visible but fixed, and replays the welcome tour', async () => {
     const user = userEvent.setup();
     const h = await startController({ handlers: { 'window:openOnboarding': () => undefined } });
     renderWithController(<GeneralSection />, h.controller);
 
-    const language = screen.getByRole('combobox', { name: 'Language' });
+    const language = screen.getByRole('combobox', { name: 'Display language' });
     expect(language).toHaveAttribute('aria-disabled', 'true');
     expect(language).toHaveDisplayValue('English (United States)');
     expect(screen.getAllByRole('option')).toHaveLength(1);
+    expect(screen.getByText(/Choose the language you speak under Voice/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Replay' }));
     expect(h.inputsOf('window:openOnboarding')).toHaveLength(1);

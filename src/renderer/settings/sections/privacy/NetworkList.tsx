@@ -1,6 +1,7 @@
 import { Icon, type IconName } from '@renderer/components/Icon';
 import { SettingsGroup } from '@renderer/components/forms';
 import { modelManifest } from '@shared/models';
+import { SPEECH_PACKS, type SpeechPackId } from '@shared/speech/packs';
 
 interface NetworkUse {
   icon: IconName;
@@ -12,6 +13,12 @@ function hostsOf(urls: readonly string[]): string {
   const hosts = [...new Set(urls.map((url) => new URL(url).hostname))];
   const last = hosts.at(-1) ?? '';
   return hosts.length > 1 ? `${hosts.slice(0, -1).join(', ')} or ${last}` : last;
+}
+
+/** Download hosts of one speech pack, read from the catalogue so the list cannot drift from it. */
+function packHosts(id: SpeechPackId): string {
+  const { archive, files } = SPEECH_PACKS[id];
+  return hostsOf(archive ? [archive.url] : (files ?? []).map((file) => file.url));
 }
 
 const NETWORK_USES: readonly NetworkUse[] = [
@@ -36,9 +43,24 @@ const NETWORK_USES: readonly NetworkUse[] = [
     text: `Once, from ${hostsOf(modelManifest.urls)}. The file is checked against a SHA-256 checksum before it is used.`,
   },
   {
+    icon: 'download',
+    title: 'Natural voice download',
+    text: `Only when you download the natural voice: once, from ${packHosts('supertonic-3')}. The files are checked against SHA-256 checksums before they are used.`,
+  },
+  {
+    icon: 'download',
+    title: 'Whisper speech models',
+    text: `Only when you download Whisper: once, from ${packHosts('whisper-small')}. The files are checked against SHA-256 checksums before they are used. Recognition itself runs on this PC.`,
+  },
+  {
     icon: 'sparkle',
     title: 'Azure (optional)',
     text: 'Only if you add keys and turn it on: your voice goes to your Azure Speech resource, and questions (plus any screen selection you ask about) to your Azure OpenAI deployment.',
+  },
+  {
+    icon: 'speaker',
+    title: 'ElevenLabs (optional)',
+    text: "Only if you add an ElevenLabs key and choose it as the assistant voice: the text of Beekeeper's replies is sent to api.elevenlabs.io to be turned into speech. Your voice and everything else stay on this PC.",
   },
   {
     icon: 'refresh',

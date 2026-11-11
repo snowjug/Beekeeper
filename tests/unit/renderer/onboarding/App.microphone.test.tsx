@@ -17,6 +17,8 @@ async function openMicScreen(options: RenderOptions = {}) {
   const rendered = renderApp(options);
   await heading('Meet Beekeeper');
   await rendered.user.click(button('Get started'));
+  await heading(/language & voice/i);
+  await rendered.user.click(button('Skip for now'));
   await heading(/try your microphone/i);
   return rendered;
 }
@@ -117,7 +119,7 @@ describe('microphone screen', () => {
     await user.click(button('Allow & test microphone'));
     await screen.findByText('Say something…');
     await user.click(button('Continue'));
-    await heading(/voice model/i);
+    await heading(/anywhere/i);
     expect(mic.stop).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Microphone on')).toBeNull();
   });

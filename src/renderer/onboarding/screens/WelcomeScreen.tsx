@@ -15,6 +15,7 @@ const HERO_SIZE = 148;
 
 const FEATURES: ReadonlyArray<{ icon: IconName; label: string }> = [
   { icon: 'mic', label: 'Voice & text commands' },
+  { icon: 'translate', label: 'English, Hindi & Hinglish' },
   { icon: 'circle', label: 'Circle to Search' },
   { icon: 'shield', label: 'Private by default, works offline' },
 ];
@@ -73,7 +74,7 @@ export function WelcomeScreen({ direction, intro }: WelcomeScreenProps) {
           Meet <span className="bk-brand-text">Beekeeper</span>
         </>
       }
-      description="Your voice-first assistant for Windows. Press a hotkey, say what you need — or circle anything on your screen."
+      description="Your voice-first assistant for Windows, in English or Hindi. Press a hotkey, say what you need — or circle anything on your screen."
     >
       <motion.ul
         variants={staggerContainer}

@@ -3,13 +3,20 @@ import type { MicSession } from '@renderer/lib/voice/mic';
 import type { Bridge } from '@shared/ipc/bridge';
 import type { EventChannelFor, InvokeChannelFor } from '@shared/ipc/channels';
 import type { EventPayload } from '@shared/ipc/schemas';
-import type { AppInfo, HotkeyStatus, VoiceModelState } from '@shared/ipc/types';
+import type {
+  AppInfo,
+  HotkeyStatus,
+  SpeechPackState,
+  SpeechState,
+  VoiceModelState,
+} from '@shared/ipc/types';
 import {
   applySettingsPatch,
   DEFAULT_SETTINGS,
   type SettingsPatch,
   type SettingsView,
 } from '@shared/settings';
+import { SPEECH_PACKS, type SpeechPackId } from '@shared/speech/packs';
 
 type Role = 'onboarding';
 type InvokeName = InvokeChannelFor<Role>;
@@ -66,6 +73,35 @@ export function settingsView(patch: SettingsPatch = {}): SettingsView {
   };
 }
 
+/** The speech packs ("Best" needs whisper-small and supertonic-3): missing unless overridden. */
+export function speechState(
+  packs: Partial<Record<SpeechPackId, Partial<SpeechPackState>>> = {},
+): SpeechState {
+  const pack = (id: SpeechPackId): SpeechPackState => ({
+    id,
+    state: 'missing',
+    receivedBytes: 0,
+    totalBytes: SPEECH_PACKS[id].sizeBytes,
+    bytesPerSecond: 0,
+    etaSeconds: null,
+    ...packs[id],
+  });
+  return {
+    packs: {
+      'supertonic-3': pack('supertonic-3'),
+      'whisper-small': pack('whisper-small'),
+      'whisper-base': pack('whisper-base'),
+    },
+    engine: 'idle',
+    loaded: { tts: false, stt: null },
+  };
+}
+
+/** A pack that is fully downloaded. */
+export function readyPack(id: SpeechPackId): Partial<SpeechPackState> {
+  return { state: 'ready', receivedBytes: SPEECH_PACKS[id].sizeBytes };
+}
+
 export const HOTKEYS_OK: HotkeyStatus = {
   assistant: { accelerator: 'Ctrl+Shift+Space', registered: true },
   circle: { accelerator: 'Alt+Shift+C', registered: true },
@@ -97,6 +133,15 @@ export function createFakeBridge(): FakeBridge {
     ['voice:modelStatus', () => modelState()],
     ['voice:modelEnsure', () => modelState({ state: 'downloading' })],
     ['voice:modelCancel', () => modelState({ state: 'partial', receivedBytes: 4_000_000 })],
+    ['speech:status', () => speechState()],
+    [
+      'speech:ensurePack',
+      (input) => {
+        const { pack } = input as { pack: SpeechPackId };
+        return speechState({ [pack]: { state: 'downloading' } });
+      },
+    ],
+    ['speech:cancelPack', () => speechState()],
     ['os:openMicSettings', () => true],
     ['onboarding:finish', () => undefined],
   ]);

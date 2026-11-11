@@ -11,6 +11,7 @@ import {
   gate,
   makeInfo,
   makeModel,
+  makeSpeech,
   makeView,
   startController,
 } from './support';
@@ -53,6 +54,7 @@ describe('loading', () => {
         dictation: { accelerator: 'Alt+Shift+D', registered: true },
       }),
       'voice:modelStatus': () => makeModel(),
+      'speech:status': () => makeSpeech(),
       'updates:state': () => ({ status: 'idle' }),
       'app:log': () => undefined,
     });

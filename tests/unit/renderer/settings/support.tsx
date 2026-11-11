@@ -5,8 +5,15 @@ import { expect } from 'vitest';
 import type { Bridge } from '@shared/ipc/bridge';
 import type { EventChannelFor, InvokeChannelFor } from '@shared/ipc/channels';
 import type { EventPayload, InvokeInput, InvokeOutput } from '@shared/ipc/schemas';
-import type { AppInfo, HotkeyStatus, VoiceModelState } from '@shared/ipc/types';
+import type {
+  AppInfo,
+  HotkeyStatus,
+  SpeechPackState,
+  SpeechState,
+  VoiceModelState,
+} from '@shared/ipc/types';
 import { DEFAULT_SETTINGS, type SettingsPatch, type SettingsView } from '@shared/settings';
+import { SPEECH_PACKS, type SpeechPackId } from '@shared/speech/packs';
 import { useToastStore } from '@renderer/components/Toast';
 import { SettingsController } from '@renderer/settings/controller';
 import { SettingsProvider } from '@renderer/settings/context';
@@ -125,6 +132,36 @@ export const HOTKEY_STATUS: HotkeyStatus = {
   dictation: { accelerator: 'Alt+Shift+D', registered: true },
 };
 
+/** A pack that is fully downloaded (totals match the catalogue). */
+export function readyPack(id: SpeechPackId): Partial<SpeechPackState> {
+  const { sizeBytes } = SPEECH_PACKS[id];
+  return { state: 'ready', receivedBytes: sizeBytes, totalBytes: sizeBytes };
+}
+
+/** The on-device speech status: every pack missing unless the overrides say otherwise. */
+export function makeSpeech(
+  packs: Partial<Record<SpeechPackId, Partial<SpeechPackState>>> = {},
+): SpeechState {
+  const pack = (id: SpeechPackId): SpeechPackState => ({
+    id,
+    state: 'missing',
+    receivedBytes: 0,
+    totalBytes: 0,
+    bytesPerSecond: 0,
+    etaSeconds: null,
+    ...packs[id],
+  });
+  return {
+    packs: {
+      'supertonic-3': pack('supertonic-3'),
+      'whisper-small': pack('whisper-small'),
+      'whisper-base': pack('whisper-base'),
+    },
+    engine: 'idle',
+    loaded: { tts: false, stt: null },
+  };
+}
+
 /**
  * The bridge types `settings:update` input as `unknown` (the shared schema is cast without an input
  * type), so handlers narrow it here.
@@ -137,6 +174,7 @@ export interface StartOptions {
   view?: SettingsView;
   info?: AppInfo;
   model?: VoiceModelState;
+  speech?: SpeechState;
   hotkeys?: HotkeyStatus;
   section?: SettingsPage;
   handlers?: Handlers;
@@ -161,6 +199,7 @@ export async function startController(options: StartOptions = {}): Promise<Harne
     'app:info': () => options.info ?? makeInfo(),
     'hotkeys:status': () => options.hotkeys ?? HOTKEY_STATUS,
     'voice:modelStatus': () => options.model ?? makeModel(),
+    'speech:status': () => options.speech ?? makeSpeech(),
     'updates:state': () => ({ status: 'idle' as const }),
     'app:log': () => undefined,
     ...options.handlers,

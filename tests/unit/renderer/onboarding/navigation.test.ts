@@ -25,7 +25,7 @@ describe('navReducer', () => {
       expect(state.direction).toBe(1);
       visited.push(stepAt(state.index).id);
     }
-    expect(visited).toEqual(['welcome', 'microphone', 'model', 'hotkeys', 'done']);
+    expect(visited).toEqual(['welcome', 'language', 'microphone', 'hotkeys', 'done']);
   });
 
   it('stops at the last screen without creating a new state', () => {
@@ -54,8 +54,8 @@ describe('navReducer', () => {
 describe('step labels', () => {
   it.each([
     [0, 'Step 1 of 5', 'Step 1 of 5: Welcome'],
-    [1, 'Step 2 of 5', 'Step 2 of 5: Microphone'],
-    [2, 'Step 3 of 5', 'Step 3 of 5: Voice model'],
+    [1, 'Step 2 of 5', 'Step 2 of 5: Language & voice'],
+    [2, 'Step 3 of 5', 'Step 3 of 5: Microphone'],
     [3, 'Step 4 of 5', 'Step 4 of 5: Hotkeys & wake word'],
     [4, 'Step 5 of 5', 'Step 5 of 5: All set'],
   ])('describes index %i', (index, label, announcement) => {

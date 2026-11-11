@@ -10,6 +10,7 @@ import {
   HOTKEY_STATUS,
   makeInfo,
   makeModel,
+  makeSpeech,
   makeView,
   renderWithController,
   startController,
@@ -33,6 +34,7 @@ describe('Settings window', () => {
       'app:info': () => makeInfo(),
       'hotkeys:status': () => HOTKEY_STATUS,
       'voice:modelStatus': () => makeModel(),
+      'speech:status': () => makeSpeech(),
       'updates:state': () => ({ status: 'idle' }),
       'app:log': () => undefined,
     });
@@ -61,6 +63,7 @@ describe('Settings window', () => {
       'app:info': () => makeInfo(),
       'hotkeys:status': () => HOTKEY_STATUS,
       'voice:modelStatus': () => makeModel(),
+      'speech:status': () => makeSpeech(),
       'updates:state': () => ({ status: 'idle' }),
       'app:log': () => undefined,
     });
@@ -105,6 +108,8 @@ describe('Settings window', () => {
       ['Voice', 'Voice'],
       ['Hotkeys', 'Hotkeys'],
       ['Circle to Search', 'Circle to Search'],
+      ['Capture Studio', 'Capture Studio'],
+      ['Dictation', 'Dictation'],
       ['AI', 'AI (optional Azure)'],
       ['Privacy', 'Privacy'],
       ['Updates', 'Updates'],
