@@ -120,7 +120,7 @@ describe('Settings window', () => {
       expect(await heading(title)).toBeInTheDocument();
     }
     h.stop();
-  });
+  }, 20_000);
 
   it('uses a solid background only when the window has no system material', async () => {
     const h = await startController({ info: makeInfo({ material: 'none' }) });

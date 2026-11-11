@@ -24,7 +24,8 @@ test.describe('application shell', () => {
     });
     expect(tray.created).toBe(true);
     expect(tray.iconMissing).toBe(false);
-    expect(tray.tooltip).toContain('Beekeeper 1.0.0');
+    const { version } = createRequire(__filename)('../../package.json') as { version: string };
+    expect(tray.tooltip).toContain(`Beekeeper ${version}`);
     expect(tray.tooltip).toContain('Ctrl+Shift+Space');
   });
 

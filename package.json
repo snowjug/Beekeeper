@@ -1,7 +1,7 @@
 {
   "name": "beekeeper",
   "productName": "Beekeeper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Beekeeper — a voice-first desktop assistant for Windows with Circle to Search",
   "author": "Atharv Shukla",
   "license": "MIT",
