@@ -9,6 +9,8 @@ export const DICTATION_INVOKE = {
   /** Recorded audio of one dictation; main transcribes it and types the text. */
   'dictation:submit': ['dictation'],
   'dictation:cancel': ['dictation'],
+  /** The pill cannot record (no microphone, nothing heard): main shows the reason and ends. */
+  'dictation:abort': ['dictation'],
 } as const satisfies Record<string, Roles>;
 
 export const DICTATION_EVENTS = {

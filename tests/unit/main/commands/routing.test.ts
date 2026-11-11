@@ -191,6 +191,16 @@ const PHRASES: Record<string, readonly string[]> = {
     'open beekeeper settings',
   ],
   stop: ['stop', 'cancel', 'never mind', 'nevermind'],
+  dictate: [
+    'start dictation',
+    'dictate',
+    'type what i say',
+    'voice typing',
+    'dictation mode',
+    'start voice typing',
+    'begin dictating',
+    'turn on dictation',
+  ],
   briefing: ['good morning', 'brief me', 'daily briefing', 'what does my day look like'],
   repeat: ['repeat that', 'say that again', 'what did you say'],
 };

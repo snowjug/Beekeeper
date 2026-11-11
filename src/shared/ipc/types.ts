@@ -3,6 +3,7 @@ import type { Card, CountdownCard, HistoryEntry } from '../cards';
 import type { WindowRole } from '../windows';
 
 export type {
+  DictationAbortReason,
   DictationPhase,
   DictationStart,
   DictationStatus,

@@ -13,6 +13,8 @@ export interface DictationStart {
   maxSeconds: number;
   earcons: boolean;
   theme: 'light' | 'dark';
+  /** Accelerator that finishes the dictation (shown in the hint); null when it is not registered. */
+  hotkey: string | null;
 }
 
 export type DictationPhase =
@@ -24,6 +26,18 @@ export interface DictationStatus {
   text?: string;
   message?: string;
 }
+
+/** Why the pill gave up before it had audio to submit. */
+export type DictationAbortReason =
+  'no-speech' | 'mic-denied' | 'mic-missing' | 'mic-busy' | 'error';
+
+export const DICTATION_ABORT_REASONS = [
+  'no-speech',
+  'mic-denied',
+  'mic-missing',
+  'mic-busy',
+  'error',
+] as const satisfies readonly DictationAbortReason[];
 
 export interface DictationSubmitResult {
   ok: boolean;
@@ -47,6 +61,13 @@ export const dictationInvokeSchemas = {
     output: out<DictationSubmitResult>(),
   },
   'dictation:cancel': { input: z.void(), output: z.void() },
+  'dictation:abort': {
+    input: z.object({
+      reason: z.enum(DICTATION_ABORT_REASONS),
+      message: z.string().max(300).optional(),
+    }),
+    output: z.void(),
+  },
 };
 
 export const dictationEventSchemas = {
