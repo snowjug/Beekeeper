@@ -562,13 +562,9 @@ export function bootstrap(mainDir: string): AppContext {
   }
   setTimeout(() => {
     assistant.preload();
-    circle.preload();
     wake.evaluate();
     void wake.refreshPower();
   }, 150);
-  setTimeout(() => {
-    ocr.warmUp().catch((error: unknown) => logger.warn('OCR warm-up failed', error));
-  }, 2500);
   setTimeout(() => void loadScreenGrabber(logger), 1000);
   // Index the installed (Start menu and packaged) apps so "open <app>" answers instantly.
   setTimeout(() => {

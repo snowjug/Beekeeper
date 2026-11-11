@@ -1,4 +1,4 @@
-import { nativeImage, screen, type Display } from 'electron';
+import { nativeImage, screen, type BrowserWindow, type Display } from 'electron';
 import type { Logger } from '@shared/logger';
 import type { CircleSession, ToastEvent } from '@shared/ipc/types';
 import { captureDisplay } from '../capture/screen';
@@ -19,6 +19,8 @@ export interface CircleWindowDeps {
   notify: (toast: Pick<ToastEvent, 'title' | 'message'>) => void;
   /** Cancel when the overlay loses focus. Automated tests turn this off (other windows steal focus). */
   cancelOnBlur?: boolean;
+  /** Destroy the idle overlay window after this long (it costs about 35 MB). Default 2 minutes. */
+  idleDestroyMs?: number;
 }
 
 /** The renderer must confirm that the frozen frame is decoded before the overlay is shown. */
@@ -29,6 +31,8 @@ const CLOSE_FALLBACK_MS = 500;
 const BLUR_GRACE_MS = 600;
 /** The assistant bar needs a frame or two to disappear from the desktop composition. */
 const SCREEN_SETTLE_MS = 70;
+/** A hidden overlay window holds a renderer and GPU surfaces: let go of it when it was not used. */
+const IDLE_DESTROY_MS = 120_000;
 
 interface ReadyWaiter {
   id: string;
@@ -37,8 +41,10 @@ interface ReadyWaiter {
 
 /**
  * Lifecycle of the Circle to Search overlay window: capture -> show -> close. The window is created
- * hidden at start-up so the hotkey only has to size, show and focus it (spec 7: < 400 ms). Every
- * exit path funnels through finishClose(), which hides the window and frees the capture, so the
+ * when the hotkey is pressed (in parallel with the 40 ms screenshot, about 230 ms in total on a cold
+ * start) and then kept hidden so the next use only has to size, show and focus it (about 90 ms,
+ * spec 7: < 400 ms). After two idle minutes it is destroyed again, which keeps the idle memory low.
+ * Every exit path funnels through finishClose(), which hides the window and frees the capture, so the
  * overlay can never linger as a ghost window.
  */
 export class CircleWindowController {
@@ -46,8 +52,10 @@ export class CircleWindowController {
   private readyWaiter: ReadyWaiter | null = null;
   private closeTimer: NodeJS.Timeout | null = null;
   private blurTimer: NodeJS.Timeout | null = null;
+  private idleTimer: NodeJS.Timeout | null = null;
   private shownAt = 0;
-  private wired = false;
+  private wiredWindow: BrowserWindow | null = null;
+  private screenWired = false;
 
   constructor(private readonly deps: CircleWindowDeps) {}
 
@@ -55,13 +63,16 @@ export class CircleWindowController {
     return this.phase === 'open' || this.phase === 'starting';
   }
 
-  /** Creates the hidden window early so the first hotkey press is fast. */
+  /** Creates the hidden window (or finds it) and wires its events once per window. */
   preload(): void {
     const win = this.deps.windows.ensure('circle');
-    if (this.wired) return;
-    this.wired = true;
-    win.on('blur', () => this.onBlur());
-    win.on('focus', () => this.clearBlurTimer());
+    if (this.wiredWindow !== win) {
+      this.wiredWindow = win;
+      win.on('blur', () => this.onBlur());
+      win.on('focus', () => this.clearBlurTimer());
+    }
+    if (this.screenWired) return;
+    this.screenWired = true;
     const onDisplayChange = (): void => {
       if (this.phase === 'open') this.cancel('display-change');
     };
@@ -79,7 +90,10 @@ export class CircleWindowController {
 
     const started = performance.now();
     this.phase = 'starting';
+    this.clearIdleTimer();
     try {
+      // Start creating the window while the screenshot is taken.
+      this.preload();
       const display = displayUnderCursor();
       if (this.deps.clearScreen()) await new Promise((done) => setTimeout(done, SCREEN_SETTLE_MS));
       const capture = await captureDisplay(display, screen.getAllDisplays(), this.deps.logger);
@@ -202,6 +216,21 @@ export class CircleWindowController {
     }
   }
 
+  private clearIdleTimer(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  private scheduleIdleDestroy(): void {
+    this.clearIdleTimer();
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = null;
+      if (this.phase === 'idle') this.deps.windows.destroy('circle');
+    }, this.deps.idleDestroyMs ?? IDLE_DESTROY_MS);
+  }
+
   private finishClose(): void {
     if (this.closeTimer) {
       clearTimeout(this.closeTimer);
@@ -213,5 +242,6 @@ export class CircleWindowController {
     const win = this.deps.windows.get('circle');
     if (win?.isVisible()) win.hide();
     this.deps.service.end();
+    if (win) this.scheduleIdleDestroy();
   }
 }
