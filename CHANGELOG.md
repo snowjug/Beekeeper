@@ -4,6 +4,27 @@ All notable changes to Beekeeper are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-11-11
+
+### Changed
+
+- **Capture Studio's frame flows instead of boxing the picture in.** The four white L-shaped corner brackets that
+  snapped in around the screenshot are gone. The picture now floats in a soft gradient glow whose colours drift around
+  it like liquid light, with a thin glowing ring and a ribbon of light that flows once around the border while the
+  preview opens. The corners are rounder (28 px) and nothing has a hard edge. With the preview open the app now uses
+  about 5 % of one CPU core instead of 12.6-13 % (measured, GPU plus renderer): after the opening only transforms and
+  opacity animate, where the old sweep repainted two large layers on every frame. With reduced motion the glow stands
+  still, fully drawn. Settings > Capture Studio > Glow frame still switches it off for a plain border.
+
+### Fixed
+
+- Two README screenshots (the dictation pill and the natural-voice settings) had an unrelated chat notification in a
+  corner, because they are photographed from the real screen. All screenshots were retaken, and the generator now
+  checks for windows of other programs on top of its backdrop before and after every shot and retakes the picture (or
+  fails with the program name, never a window title) instead of keeping one.
+
+[1.1.1]: https://github.com/snowjug/Beekeeper/releases/tag/v1.1.1
+
 ## [1.1.0] - 2026-11-11
 
 A Beekeeper that sounds human and understands your accent: an on-device natural voice, Whisper recognition,

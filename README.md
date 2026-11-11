@@ -16,7 +16,7 @@ Human-sounding voice, private by default, works offline.
 
 ### [⬇ Download for Windows](https://github.com/snowjug/Beekeeper/releases/latest)
 
-<sub>Installer (`Beekeeper-Setup-1.1.0.exe`) or portable (`Beekeeper-Portable-1.1.0.exe`) · 64-bit · unsigned, see [SmartScreen](#install)</sub>
+<sub>Installer (`Beekeeper-Setup-1.1.1.exe`) or portable (`Beekeeper-Portable-1.1.1.exe`) · 64-bit · unsigned, see [SmartScreen](#install)</sub>
 
 </div>
 
@@ -87,11 +87,13 @@ _"5 मिनट का टाइमर लगाओ"_ · _"chrome kholo"_ · _"
 ### Capture Studio
 
 <p align="center">
-  <img src="docs/screenshots/capture-studio.png" alt="Capture Studio: the screenshot in a glowing frame with corner brackets, Photo assist and Set as wallpaper pills above it and an edit, pin, copy, share and save toolbar below" width="900">
+  <img src="docs/screenshots/capture-studio.png" alt="Capture Studio: the screenshot in a softly flowing gradient glow, with Photo assist and Set as wallpaper pills above it and an edit, pin, copy, share and save toolbar below" width="900">
 </p>
 
-`Alt+Shift+S` (or "take a screenshot") captures the display under the mouse and opens a glowing preview: a gradient frame
-with bright corner brackets around the image, **Photo assist** (extract the text, or **hide sensitive information** such as
+`Alt+Shift+S` (or "take a screenshot") captures the display under the mouse and opens a glowing preview: the picture floats
+in a soft gradient glow whose colours drift around it like liquid light (a ribbon of light circles the border as it opens;
+there are no hard edges or corner marks, and the glow can be turned off or left still with reduced motion), with **Photo
+assist** (extract the text, or **hide sensitive information** such as
 e-mail addresses, phone numbers and card numbers with one click), **Set as wallpaper**, and a toolbar with **Edit** (crop,
 pen, highlighter, arrow, shapes, text, blur), **Pin to screen** (an always-on-top copy you can drag, zoom with the wheel and
 make see-through with `Ctrl` + wheel), **Copy**, **Share** (copy as file, open with, e-mail, show in folder) and **Save**
@@ -226,8 +228,8 @@ to the AI or a web search). City and app names stay in Latin letters.
 ## Install
 
 1. Open the [latest release](https://github.com/snowjug/Beekeeper/releases/latest).
-2. Download **`Beekeeper-Setup-1.1.0.exe`** (installer: Start menu and desktop shortcuts, updates itself) or
-   **`Beekeeper-Portable-1.1.0.exe`** (runs from any folder, never updates itself; it unpacks itself on every start, so
+2. Download **`Beekeeper-Setup-1.1.1.exe`** (installer: Start menu and desktop shortcuts, updates itself) or
+   **`Beekeeper-Portable-1.1.1.exe`** (runs from any folder, never updates itself; it unpacks itself on every start, so
    allow 10-25 seconds - the installed app reaches the tray in about half a second).
 3. Run it. The builds are **not code signed**, so Windows SmartScreen may say "Windows protected your PC":
    click **More info → Run anyway**. You can compare the file with the release page first.
@@ -347,12 +349,12 @@ first-run onboarding, offline voice and the wake word with a fake microphone. An
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Releasing:** bump `version` in `package.json`, update [CHANGELOG.md](CHANGELOG.md), then tag and push
-(`git tag v1.1.0; git push origin v1.1.0`). The [release workflow](.github/workflows/release.yml) lints, tests, builds and
+(`git tag v1.1.1; git push origin v1.1.1`). The [release workflow](.github/workflows/release.yml) lints, tests, builds and
 publishes both executables plus `latest.yml` (which the in-app updater reads).
 
 ## Performance
 
-Measured on the packaged 1.1.0 build (Windows 11, 1920×1080 at 150 % scaling, Intel Core i7-1185G7, Electron 45):
+Measured on the packaged 1.1 build (Windows 11, 1920×1080 at 150 % scaling, Intel Core i7-1185G7, Electron 45):
 
 | Budget                             | Target   | Measured                                                                  |
 | ---------------------------------- | -------- | ------------------------------------------------------------------------- |
