@@ -3,6 +3,7 @@ import { basename, join, resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
+import { voskWorkerPlugin } from './config/voskWorkerPlugin';
 
 const alias = {
   '@shared': resolve('src/shared'),
@@ -10,12 +11,16 @@ const alias = {
   '@renderer': resolve('src/renderer'),
 };
 
-// One renderer page per window: src/renderer/<name>/index.html
+// One renderer page per window: src/renderer/<name>/index.html.
+// The component gallery (visual QA) is only built when BEEKEEPER_GALLERY=1.
 const rendererRoot = resolve('src/renderer');
 const rendererInputs = Object.fromEntries(
   readdirSync(rendererRoot, { withFileTypes: true })
     .filter(
-      (entry) => entry.isDirectory() && existsSync(join(rendererRoot, entry.name, 'index.html')),
+      (entry) =>
+        entry.isDirectory() &&
+        existsSync(join(rendererRoot, entry.name, 'index.html')) &&
+        (entry.name !== 'gallery' || process.env['BEEKEEPER_GALLERY'] === '1'),
     )
     .map((entry) => [entry.name, join(rendererRoot, entry.name, 'index.html')]),
 );
@@ -47,8 +52,10 @@ export default defineConfig({
   renderer: {
     root: rendererRoot,
     resolve: { alias },
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), voskWorkerPlugin()],
     build: {
+      // AudioWorklet modules must stay real files: the CSP (script-src 'self') blocks data: URLs.
+      assetsInlineLimit: (file) => (file.endsWith('.worklet.js') ? false : undefined),
       rolldownOptions: { input: rendererInputs },
     },
   },
