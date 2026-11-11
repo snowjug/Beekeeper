@@ -587,13 +587,12 @@ export function bootstrap(mainDir: string): AppContext {
       circle,
       circleService,
       ocr,
-      // Summary of a real screenshot of the display under the cursor; optionally saved for review.
-      captureStats: async (savePath?: string) => {
+      // Summary of a real screenshot of the display under the cursor (no pixels leave the process).
+      captureStats: async () => {
         const display = displayUnderCursor();
         const started = performance.now();
         const capture = await captureDisplay(display, screen.getAllDisplays(), logger);
         const elapsedMs = Math.round(performance.now() - started);
-        if (savePath) await writeFile(savePath, capture.image.toPNG());
         const pixels = capture.image.toBitmap();
         let opaque = true;
         let lit = 0;
@@ -611,6 +610,28 @@ export function bootstrap(mainDir: string): AppContext {
           opaque,
           litFraction: samples === 0 ? 0 : lit / samples,
         };
+      },
+      // Saves a screenshot of the display under the cursor, or of a rectangle of it (in DIPs).
+      captureRegion: async (
+        savePath: string,
+        rect?: { x: number; y: number; width: number; height: number },
+      ) => {
+        const display = displayUnderCursor();
+        const capture = await captureDisplay(display, screen.getAllDisplays(), logger);
+        let image = capture.image;
+        if (rect) {
+          const origin = screen.dipToScreenRect(null, display.bounds);
+          const target = screen.dipToScreenRect(null, rect);
+          const x = Math.max(0, target.x - origin.x);
+          const y = Math.max(0, target.y - origin.y);
+          image = image.crop({
+            x,
+            y,
+            width: Math.min(capture.width - x, target.width),
+            height: Math.min(capture.height - y, target.height),
+          });
+        }
+        await writeFile(savePath, image.toPNG());
       },
     };
   }
