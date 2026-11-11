@@ -60,7 +60,7 @@ export const APP_ALIASES: readonly AppAlias[] = [
   },
   {
     display: 'Google Chrome',
-    phrases: ['chrome', 'google chrome'],
+    phrases: ['chrome', 'google chrome', 'crome', 'chrom', 'krome', 'crow', 'chrome browser'],
     names: ['google chrome', 'chrome'],
     processes: ['chrome'],
   },
@@ -72,7 +72,7 @@ export const APP_ALIASES: readonly AppAlias[] = [
   },
   {
     display: 'Microsoft Teams',
-    phrases: ['teams', 'microsoft teams', 'ms teams'],
+    phrases: ['teams', 'microsoft teams', 'ms teams', 'team', 'tims'],
     names: ['microsoft teams', 'teams'],
     processes: ['ms-teams', 'teams'],
   },
@@ -84,7 +84,7 @@ export const APP_ALIASES: readonly AppAlias[] = [
   },
   {
     display: 'Spotify',
-    phrases: ['spotify', 'spotify music'],
+    phrases: ['spotify', 'spotify music', 'spotty fi', 'spot a fi', 'spotifi'],
     names: ['spotify'],
     processes: ['spotify'],
   },

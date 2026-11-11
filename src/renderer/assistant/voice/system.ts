@@ -109,12 +109,15 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
     };
   };
 
-  /** Loads the models in the background so the first sentence does not wait for them. */
-  const warmUp = (): void => {
+  /**
+   * Loads the models in the background so the first sentence does not wait for them. Recognition
+   * (the big model) is only warmed when the user is about to talk; the voice when a reply may follow.
+   */
+  const warmUp = (options: { listening: boolean }): void => {
     const settings = store.getState().settings;
     if (!settings || !speechState) return;
     const engines = resolveEngines(settings.voice, availability(false, false));
-    const stt = engines.stt === 'whisper';
+    const stt = options.listening && engines.stt === 'whisper';
     const tts = settings.voice.ttsEnabled && engines.tts === 'natural';
     if (stt || tts) void bridge.invoke('speech:preload', { stt, tts }).catch(() => undefined);
   };
@@ -142,7 +145,7 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
 
   const offShow = bridge.on('assistant:show', (event) => {
     void speechStateReady.then(() => {
-      warmUp();
+      warmUp({ listening: event.listen });
       if (!event.listen) showUpgradeNotice();
     });
   });
@@ -344,7 +347,7 @@ export function createVoiceSystem({ bridge, submit }: VoiceSystemDeps): VoiceSys
         else showSpeechDownloadNotice(speechState);
         return;
       }
-      if (engine === 'whisper') warmUp();
+      if (engine === 'whisper') warmUp({ listening: true });
 
       let mic: MicSession;
       try {
