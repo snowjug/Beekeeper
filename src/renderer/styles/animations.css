@@ -1,0 +1,131 @@
+/* Weather icons are pure CSS/SVG animations: sun rays rotate, clouds drift, rain and snow fall. */
+@keyframes bk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bk-drift {
+  0%,
+  100% {
+    transform: translateX(-2.5px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes bk-fall {
+  0% {
+    transform: translateY(-7px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+}
+
+@keyframes bk-snow {
+  0% {
+    transform: translate(-1px, -6px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(3px, 15px);
+    opacity: 0;
+  }
+}
+
+@keyframes bk-flash {
+  0%,
+  58%,
+  100% {
+    opacity: 0;
+  }
+  62% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 0.25;
+  }
+  74% {
+    opacity: 1;
+  }
+}
+
+@keyframes bk-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes bk-fog {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes bk-pulse-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+}
+
+.bk-spin-slow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bk-spin 26s linear infinite;
+}
+
+.bk-drift {
+  animation: bk-drift 6s ease-in-out infinite;
+}
+
+.bk-drift-alt {
+  animation: bk-drift 8s ease-in-out infinite reverse;
+}
+
+.bk-drop {
+  animation: bk-fall 1.1s linear infinite;
+}
+
+.bk-flake {
+  animation: bk-snow 2.6s linear infinite;
+}
+
+.bk-flash {
+  animation: bk-flash 3.2s linear infinite;
+}
+
+.bk-twinkle {
+  animation: bk-twinkle 2.8s ease-in-out infinite;
+}
+
+.bk-fog-line {
+  animation: bk-fog 7s ease-in-out infinite;
+}
+
+.bk-pulse-ring {
+  animation: bk-pulse-ring 1.6s ease-in-out infinite;
+}
