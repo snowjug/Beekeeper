@@ -79,8 +79,40 @@ describe('time and date', () => {
     expect(hindi.speech).toMatch(/^Tokyo में अभी (सुबह|दोपहर|शाम|रात) \d{1,2}:\d{2} बजे हैं।$/);
     const time = card(hindi, 'time');
     expect(time.id).toBe(card(english, 'time').id);
-    expect(time.dateText).toBe('मंगलवार, 10 नवंबर 2026');
-    expect(time.weekday).toBe('मंगलवार');
+    // The day in Tokyo depends on the time zone of the machine that runs the test.
+    const tokyo = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Tokyo',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+      })
+        .formatToParts(NOW)
+        .map((part) => [part.type, part.value]),
+    );
+    const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(
+      tokyo['weekday'] ?? '',
+    );
+    const weekdayHindi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'][
+      weekday
+    ];
+    const monthHindi = [
+      'जनवरी',
+      'फ़रवरी',
+      'मार्च',
+      'अप्रैल',
+      'मई',
+      'जून',
+      'जुलाई',
+      'अगस्त',
+      'सितंबर',
+      'अक्टूबर',
+      'नवंबर',
+      'दिसंबर',
+    ][Number(tokyo['month']) - 1];
+    expect(time.weekday).toBe(weekdayHindi);
+    expect(time.dateText).toBe(`${weekdayHindi}, ${tokyo['day']} ${monthHindi} ${tokyo['year']}`);
   });
 });
 
