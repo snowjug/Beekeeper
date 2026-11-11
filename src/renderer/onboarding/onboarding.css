@@ -1,0 +1,131 @@
+/* Onboarding-only styles: window chrome, the ambient background and a few looping accents.
+   Everything that moves is transform/opacity driven; reduced motion is handled in the components
+   (they simply do not apply the animation classes) and by the global rule in styles/index.css. */
+
+/* The top strip drags the window; interactive children opt out. It stays left of the native
+   caption buttons through the Window Controls Overlay variables (fallbacks for plain browsers). */
+.ob-titlebar {
+  position: fixed;
+  top: 0;
+  left: env(titlebar-area-x, 0px);
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, 40px);
+  -webkit-app-region: drag;
+}
+
+.ob-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Soft brand-coloured light behind the content. The falloff is eased (gaussian-like): a plain
+   linear ramp to transparent leaves a visible rim where it reaches zero. */
+.ob-blob {
+  position: absolute;
+  border-radius: 9999px;
+  opacity: 0.34;
+  will-change: transform;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ob-blob) 100%, transparent) 0%,
+    color-mix(in srgb, var(--ob-blob) 80%, transparent) 18%,
+    color-mix(in srgb, var(--ob-blob) 52%, transparent) 38%,
+    color-mix(in srgb, var(--ob-blob) 26%, transparent) 58%,
+    color-mix(in srgb, var(--ob-blob) 9%, transparent) 78%,
+    color-mix(in srgb, var(--ob-blob) 2%, transparent) 92%,
+    transparent 100%
+  );
+}
+
+html[data-theme='light'] .ob-blob {
+  opacity: 0.42;
+}
+
+@keyframes ob-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(70px, 48px, 0) scale(1.12);
+  }
+}
+
+@keyframes ob-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(-64px, 58px, 0) scale(0.94);
+  }
+}
+
+@keyframes ob-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(54px, -62px, 0) scale(1.1);
+  }
+}
+
+@keyframes ob-drift-d {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.96);
+  }
+  50% {
+    transform: translate3d(-58px, -44px, 0) scale(1.08);
+  }
+}
+
+.ob-drift-a {
+  animation: ob-drift-a 31s ease-in-out infinite;
+}
+
+.ob-drift-b {
+  animation: ob-drift-b 37s ease-in-out infinite;
+}
+
+.ob-drift-c {
+  animation: ob-drift-c 29s ease-in-out infinite;
+}
+
+.ob-drift-d {
+  animation: ob-drift-d 41s ease-in-out infinite;
+}
+
+/* "Microphone on" indicator dot. */
+@keyframes ob-live {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.55);
+    opacity: 0.4;
+  }
+}
+
+.ob-live {
+  animation: ob-live 1.4s ease-in-out infinite;
+}
+
+/* Key caps: a gentle press every few seconds, staggered through --ob-delay. */
+@keyframes ob-press {
+  0%,
+  88%,
+  100% {
+    transform: translateY(0);
+  }
+  93% {
+    transform: translateY(2px);
+  }
+}
+
+.ob-press {
+  animation: ob-press 4.4s ease-in-out infinite;
+  animation-delay: var(--ob-delay, 0s);
+}
